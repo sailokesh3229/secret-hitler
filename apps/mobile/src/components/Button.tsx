@@ -59,9 +59,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   label: {
-    fontFamily: fontFamily.interface,
+    fontFamily: fontFamily.interfaceSemiBold,
     fontSize: fontSize.md,
-    fontWeight: "600",
     color: colors.ink,
   },
   labelSecondary: {

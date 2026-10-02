@@ -37,10 +37,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   roleName: {
-    fontFamily: fontFamily.document,
+    fontFamily: fontFamily.documentBold,
     fontSize: fontSize.xxl,
     color: colors.ink,
-    fontWeight: "700",
   },
   teamLabel: {
     fontFamily: fontFamily.document,

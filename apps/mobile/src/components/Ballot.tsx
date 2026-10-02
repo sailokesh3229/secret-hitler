@@ -39,9 +39,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   label: {
-    fontFamily: fontFamily.document,
+    fontFamily: fontFamily.documentBold,
     fontSize: fontSize.lg,
     color: colors.ink,
-    fontWeight: "700",
   },
 })

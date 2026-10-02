@@ -1,12 +1,10 @@
-/* Loads the two spec Sec 9 fonts under their plain brief names (Jost,
-   Libre Caslon Text) so every component just writes fontFamily: 
-   fontFamily.interface and gets the right file, instead of the
-   weight-suffixed names @expo-google-fonts ships (Jost_400Regular).
-   Only one weight each is loaded for now - bold/semibold render via
-   the OS synthetic-bold fallback until real weight files are added
-   (not a spec requirement, a later polish item). */
-import { Jost_400Regular } from "@expo-google-fonts/jost"
-import { LibreCaslonText_400Regular } from "@expo-google-fonts/libre-caslon-text"
+/* Loads the spec Sec 9 fonts under their plain brief names (Jost,
+   Libre Caslon Text) plus the weight variants the app actually uses
+   (interfaceSemiBold, interfaceBold, documentBold - see
+   packages/theme/src/typography.ts for why Android needs these as
+   separate registered families rather than fontWeight alone). */
+import { Jost_400Regular, Jost_600SemiBold, Jost_700Bold } from "@expo-google-fonts/jost"
+import { LibreCaslonText_400Regular, LibreCaslonText_700Bold } from "@expo-google-fonts/libre-caslon-text"
 import { useFonts } from "expo-font"
 import { Stack } from "expo-router"
 import { View } from "react-native"
@@ -14,7 +12,10 @@ import { View } from "react-native"
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Jost: Jost_400Regular,
+    "Jost-SemiBold": Jost_600SemiBold,
+    "Jost-Bold": Jost_700Bold,
     "Libre Caslon Text": LibreCaslonText_400Regular,
+    "Libre Caslon Text-Bold": LibreCaslonText_700Bold,
   })
   if (!fontsLoaded) {
     return <View />

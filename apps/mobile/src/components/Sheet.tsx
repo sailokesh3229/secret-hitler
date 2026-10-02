@@ -30,9 +30,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   title: {
-    fontFamily: fontFamily.interface,
+    fontFamily: fontFamily.interfaceSemiBold,
     fontSize: fontSize.lg,
-    fontWeight: "600",
     color: colors.textOnDark,
   },
 })

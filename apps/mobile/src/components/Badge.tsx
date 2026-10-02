@@ -48,6 +48,6 @@ const styles = StyleSheet.create({
   },
   labelFilled: {
     color: colors.ink,
-    fontWeight: "600",
+    fontFamily: fontFamily.interfaceSemiBold,
   },
 })

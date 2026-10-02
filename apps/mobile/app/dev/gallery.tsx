@@ -212,9 +212,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    fontFamily: fontFamily.interface,
+    fontFamily: fontFamily.interfaceSemiBold,
     fontSize: fontSize.md,
-    fontWeight: "600",
     color: colors.accent,
   },
   sectionBody: {
