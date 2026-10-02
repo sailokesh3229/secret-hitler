@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Secret Hitler Mobile",
+    "slug": "secret-hitler-mobile",
+    "scheme": "secrethitler",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true },
+    "ios": { "supportsTablet": false },
+    "android": {},
+    "web": { "bundler": "metro" }
+  }
+}
