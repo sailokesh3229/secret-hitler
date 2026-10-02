@@ -51,7 +51,7 @@ Tick the boxes in this file as you go.
 **Claude Code checks:** `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm test` all pass; the mobile app starts with a placeholder screen.
 **Your review:** open the placeholder in Expo Go on your phone.
 
-### ☐ Step 2 — Engine: setup and role knowledge
+### ☑ Step 2 — Engine: setup and role knowledge
 **Prompt**
 > Do Step 2: in packages/engine implement game setup per spec R1–R10: role dealing, Party Membership, deck, the board config table (R5) as data, seat order, random first President, and role-reveal knowledge. Use an injectable random source so tests are deterministic. Name each test after its rule ID.
 

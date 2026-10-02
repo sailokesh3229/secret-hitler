@@ -1,5 +1,11 @@
-/* packages/engine - pure rules engine (no I/O, no timers, no Math.random).
-   Game logic (R1-R48) lands here per plan.md Steps 2-4. This placeholder only
-   proves the package builds, typechecks and tests end to end. */
+/* packages/engine public API. Pure functions only: no I/O, no timers, no
+   Math.random (CLAUDE.md rule 3). Setup and role knowledge (R1-R10) land
+   here in plan.md Step 2. Elections, legislation, powers and win checks
+   follow in Steps 3-4. */
 
-export const ENGINE_PACKAGE_NAME = "@game/engine"
+export * from "./types.js"
+export * from "./deck.js"
+export * from "./roles.js"
+export * from "./boards.js"
+export * from "./seating.js"
+export * from "./knowledge.js"
