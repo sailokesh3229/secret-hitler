@@ -5,8 +5,8 @@ import { radii } from "./radii.js"
 import { roleNames, teamNames, voteLabels } from "./strings.js"
 
 describe("spec Sec 9 defaults", () => {
-  it("background is the green baize default", () => {
-    expect(colors.background).toBe("#1E3A2F")
+  it("background is the owner-chosen walnut tone, not the green baize default (Review 1)", () => {
+    expect(colors.background).toBe("#1C1714")
   })
 
   it("accent is the brass default", () => {
@@ -35,7 +35,8 @@ describe("spec Sec 9 defaults", () => {
     expect(roleNames.ROLE_LEADER).toBeTruthy()
   })
 
-  it("Ja and Nein vote labels are distinct strings", () => {
-    expect(voteLabels.VOTE_YES).not.toBe(voteLabels.VOTE_NO)
+  it("Yes and No vote labels are plain English and distinct (Review 1)", () => {
+    expect(voteLabels.VOTE_YES).toBe("Yes")
+    expect(voteLabels.VOTE_NO).toBe("No")
   })
 })

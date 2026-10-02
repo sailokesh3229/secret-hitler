@@ -1,8 +1,13 @@
 /* CLAUDE.md rule 7 (no tells): Liberal, Fascist and Hitler use the
-   exact same layout, size and position for every element - only the
-   two text strings and the emblem colour/shape differ, driven by
-   partyMembership (R3) from @game/engine so the Role to Team mapping
-   is never duplicated. Document font (spec Sec 9) for the role card.
+   exact same layout, size and position for every element. Review 1
+   design feedback (docs/design-feedback.md): the heading is always
+   the TEAM (party membership, R3), the specific role is the small
+   line underneath - so Hitlers card reads "Fascist" (big) / "Hitler"
+   (small), and never reveals the identity at a glance. Liberal and
+   Fascist cards show the same word twice by the same rule - that
+   redundancy is what keeps Hitlers card unreadable among them.
+   Driven by partyMembership (R3) from @game/engine so the Role to
+   Team mapping is never duplicated. Document font (spec Sec 9).
    Hold-to-reveal gesture is built in Step 7, not here. */
 import { StyleSheet, Text, View } from "react-native"
 import { partyMembership } from "@game/engine"
@@ -19,8 +24,8 @@ export function RoleCard({ role }: RoleCardProps) {
   return (
     <View style={styles.card}>
       <Emblem team={team} size={48} />
-      <Text style={styles.roleName}>{roleNames[role]}</Text>
-      <Text style={styles.teamLabel}>Team: {teamNames[team]}</Text>
+      <Text style={styles.teamHeading}>{teamNames[team]}</Text>
+      <Text style={styles.roleLabel}>{roleNames[role]}</Text>
     </View>
   )
 }
@@ -36,12 +41,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  roleName: {
+  teamHeading: {
     fontFamily: fontFamily.documentBold,
     fontSize: fontSize.xxl,
     color: colors.ink,
   },
-  teamLabel: {
+  roleLabel: {
     fontFamily: fontFamily.document,
     fontSize: fontSize.md,
     color: colors.ink,

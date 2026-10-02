@@ -15,9 +15,11 @@ export const roleNames = {
   ROLE_LEADER: "Hitler",
 } as const
 
+/* Review 1 design feedback: English Yes/No, not Ja/Nein (docs/design-
+   feedback.md). */
 export const voteLabels = {
-  VOTE_YES: "Ja!",
-  VOTE_NO: "Nein",
+  VOTE_YES: "Yes",
+  VOTE_NO: "No",
 } as const
 
 export const policyLabels = {

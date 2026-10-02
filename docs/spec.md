@@ -326,8 +326,8 @@ Fill in the "Your choice" column. **Anything left blank uses the default.** Clau
 |---|---|---|
 | 3 mood words | Tense, tactile, period | |
 | Apps/games you like the look of | — | |
-| Background | Green baize `#1E3A2F` | |
-| Recessed surfaces (sheets, drawers) | `#15291F` | |
+| Background | Green baize `#1E3A2F` | Walnut `#1C1714` (Review 1: no green) |
+| Recessed surfaces (sheets, drawers) | `#15291F` | `#120E0C` (matches walnut background) |
 | Accent (placards, main buttons) | Brass `#C29A4B` | |
 | Card / tile paper | `#EDE6D3`, ink `#26323B` | |
 | Liberal colour + symbol | Blue `#3A6EA5`, round emblem | |
@@ -336,7 +336,7 @@ Fill in the "Your choice" column. **Anything left blank uses the default.** Clau
 | Document font (role card, dossier, log) | Libre Caslon Text | |
 | Corners | Tiles 10 pt, controls 14 pt | |
 | Signature interactions | Hold-to-reveal envelope; drag tile to discard; all ballots flip together | |
-| Avatars | Illustrated period portraits (set of 16) | |
+| Avatars | Illustrated period portraits (set of 16) | Interim: app-assigned neutral-palette medallion, deterministic per player, until real art exists |
 | Sounds | Soft paper/card sounds; off by default | |
 | Haptics | Light on selection; one firm on enactment | |
 | Theme | One table theme (no light/dark switch) | |
@@ -451,3 +451,5 @@ The rulebook states CC BY-NC-SA 4.0: credit Mike Boxleiter, Tommy Maranges and M
 | D11 | In-person = every player on own phone, internet required | Default |
 | D12 | No private Fascist chat | Default |
 | D13 | Licensing path (approval vs rebrand) | Open — needed before store release only |
+| D14 | Vote ballots labelled Yes/No in English, not Ja/Nein (spec Sec 6, S12 still describe the rule by Ja/Nein for rulebook fidelity - the displayed copy is the English pair) | Decided (Review 1) |
+| D15 | Role card heading is always the Team (party membership), the specific role name is the small line underneath - applies to Liberal and Fascist too, not just Hitler, to keep every role card the same layout (CLAUDE.md rule 7) | Decided (Review 1) |

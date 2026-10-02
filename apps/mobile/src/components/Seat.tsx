@@ -1,10 +1,10 @@
-/* Seat: avatar + name + badges. Real illustrated portraits (spec Sec 9,
-   set of 16) are not built yet - this placeholder avatar is a plain
-   initial, swapped for real art without changing how this component
-   is used. */
+/* Seat: avatar + name + badges. Review 1 design feedback: each player
+   gets an app-assigned Avatar, not a plain initial (see Avatar.tsx
+   for why it is deliberately team-colour-free). */
 import { StyleSheet, Text, View } from "react-native"
-import { colors, fontFamily, fontSize, radii, spacing } from "@game/theme"
+import { colors, fontFamily, fontSize, spacing } from "@game/theme"
 import type { BadgeKind } from "@game/theme"
+import { Avatar } from "./Avatar.js"
 import { Badge } from "./Badge.js"
 
 export interface SeatProps {
@@ -13,12 +13,9 @@ export interface SeatProps {
 }
 
 export function Seat({ name, badges = [] }: SeatProps) {
-  const initial = name.charAt(0).toUpperCase()
   return (
     <View style={styles.container}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initial}</Text>
-      </View>
+      <Avatar name={name} size={56} />
       <Text style={styles.name}>{name}</Text>
       {badges.length > 0 && (
         <View style={styles.badgeRow}>
@@ -36,21 +33,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     width: 96,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: radii.full,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontFamily: fontFamily.document,
-    fontSize: fontSize.xl,
-    color: colors.textOnDark,
   },
   name: {
     fontFamily: fontFamily.interface,

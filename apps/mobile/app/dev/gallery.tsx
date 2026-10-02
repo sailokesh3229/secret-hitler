@@ -6,6 +6,7 @@ import { useState } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { actionLabels, colors, fontFamily, fontSize, spacing } from "@game/theme"
 import { ActionPanel } from "../../src/components/ActionPanel.js"
+import { Avatar } from "../../src/components/Avatar.js"
 import { Badge } from "../../src/components/Badge.js"
 import { Ballot } from "../../src/components/Ballot.js"
 import { Button } from "../../src/components/Button.js"
@@ -66,6 +67,17 @@ export default function ComponentGallery() {
           <TextField label="Room ID" value={textValue} onChangeText={setTextValue} placeholder="K7M2QX" />
           <TextField label="Password" value="" errorText="Wrong password. Try again." />
           <TextField label="Password" value="secret12" disabled />
+        </View>
+      </Section>
+
+      <Section title="Avatars (assigned by the app, not uploaded)">
+        <View style={styles.row}>
+          <Avatar name="Arjun" />
+          <Avatar name="Maya" />
+          <Avatar name="Priya" />
+          <Avatar name="Rohan" />
+          <Avatar name="Zara" />
+          <Avatar name="Dev" />
         </View>
       </Section>
 
@@ -173,7 +185,7 @@ export default function ComponentGallery() {
       <Section title="Log entry">
         <View>
           <LogEntry text="Maya nominated Arjun as Chancellor" />
-          <LogEntry text="Government elected - 5 Ja, 2 Nein" />
+          <LogEntry text="Government elected - 5 Yes, 2 No" />
         </View>
       </Section>
 
