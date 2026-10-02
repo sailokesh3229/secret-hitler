@@ -1,5 +1,13 @@
-/* packages/theme - design tokens, user-facing strings and icons (CLAUDE.md
-   rule 6: "theme pack only"). Real tokens from spec Sec 9 land in plan.md
-   Step 5. This placeholder proves the package builds end to end. */
+/* packages/theme public API. Pure data only - colours, fonts, spacing,
+   radii, motion timings, haptic style identifiers, and every
+   user-facing string (CLAUDE.md rule 6). No React Native or Expo
+   import here. apps/mobile is the only place these tokens get
+   rendered. Built from spec Sec 9 in plan.md Step 5. */
 
-export const THEME_PACKAGE_NAME = "@game/theme"
+export * from "./colors.js"
+export * from "./typography.js"
+export * from "./spacing.js"
+export * from "./radii.js"
+export * from "./motion.js"
+export * from "./haptics.js"
+export * from "./strings.js"

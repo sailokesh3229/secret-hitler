@@ -77,7 +77,7 @@ Tick the boxes in this file as you go.
 
 No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you jump to any screen, any phase, and any player's point of view.
 
-### ☐ Step 5 — Theme and component gallery · Design review 1
+### ☑ Step 5 — Theme and component gallery · Design review 1
 **Prompt**
 > Do Step 5: build packages/theme from spec §9 (use "Your choice" values, defaults where blank): colours, fonts, spacing, radii, motion timings, haptics, all user-facing strings. Then build a Component Gallery screen in the app (dev menu only) showing every component in every state: buttons, inputs, seat with all badges, policy tiles (Liberal, Fascist, face-down), ballots (Ja, Nein, face-down), role cards (3), envelope, Liberal track, all three Fascist tracks with power icons, election tracker, status line, action panel, sheet, chat bubble, log entry, toast. No hard-coded colours or strings outside packages/theme.
 
