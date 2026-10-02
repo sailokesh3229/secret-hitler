@@ -1,8 +1,8 @@
 /* packages/engine public API. Pure functions only: no I/O, no timers, no
-   Math.random (CLAUDE.md rule 3). Setup and role knowledge (R1-R10) land
-   here in plan.md Step 2. Elections, votes and Chaos (R11-R25) land in
-   Step 3. Legislation, veto, powers, win checks and projectView follow
-   in Step 4. */
+   Math.random (CLAUDE.md rule 3). Setup and role knowledge (R1-R10):
+   Step 2. Elections, votes and Chaos (R11-R25): Step 3. Legislation,
+   veto, powers, win checks, the full round state machine and
+   projectView (R26-R48, spec Sec 8): Step 4. */
 
 export * from "./types.js"
 export * from "./deck.js"
@@ -17,3 +17,11 @@ export * from "./voting.js"
 export * from "./tracker.js"
 export * from "./chaos.js"
 export * from "./hitlerCheck.js"
+export * from "./phase.js"
+export * from "./wins.js"
+export * from "./legislative.js"
+export * from "./veto.js"
+export * from "./powers.js"
+export * from "./state.js"
+export * from "./reducer.js"
+export * from "./projectView.js"

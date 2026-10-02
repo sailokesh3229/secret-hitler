@@ -48,12 +48,12 @@ describe("R19", () => {
     expect(getVoteRevealer(SEATS, "a", ALL_ALIVE, ALL_CONNECTED)).toBe("a")
   })
 
-  it("R19 (Sec 6): an executed host\x27s reveal duty passes to the next living, connected player clockwise", () => {
+  it("R19 (Sec 6): reveal duty passes to the next living, connected player when the host is executed", () => {
     const alive = new Set(["b", "c", "d", "e"])
     expect(getVoteRevealer(SEATS, "a", alive, ALL_CONNECTED)).toBe("b")
   })
 
-  it("R19 (Sec 6): a disconnected host\x27s reveal duty also passes to the next living, connected player", () => {
+  it("R19 (Sec 6): reveal duty also passes on when the host is disconnected", () => {
     const connected = new Set(["b", "c", "d", "e"])
     expect(getVoteRevealer(SEATS, "a", ALL_ALIVE, connected)).toBe("b")
   })

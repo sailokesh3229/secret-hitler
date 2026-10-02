@@ -64,7 +64,7 @@ Tick the boxes in this file as you go.
 
 **Claude Code checks:** tie fails; 3 failures → Chaos with power ignored and term limits cleared; Chaos can win and unlock veto; Special Election return incl. "President twice in a row".
 
-### ☐ Step 4 — Engine: legislation, veto, powers, wins, views
+### ☑ Step 4 — Engine: legislation, veto, powers, wins, views
 **Prompt**
 > Do Step 4: implement R26–R48: legislative session, reshuffle, veto, all four powers driven by the R5 board table, execution effects, win checks and their order (R47). Then implement `projectView(state, playerId)` per spec §8 and a simulator in tools/sim that plays 10,000 random legal games for each player count. Add a leak test that asserts no projected view contains another player's secrets.
 
