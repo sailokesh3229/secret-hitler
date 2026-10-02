@@ -4,10 +4,10 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start",
+    "android": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --android",
+    "ios": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --ios",
+    "web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -35,6 +35,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.2.18",
+    "cross-env": "^7.0.3",
     "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   }
