@@ -31,3 +31,7 @@ export const MAX_PLAYER_COUNT = 10
 export function isValidPlayerCount(n: number): n is PlayerCount {
   return Number.isInteger(n) && n >= MIN_PLAYER_COUNT && n <= MAX_PLAYER_COUNT
 }
+
+export const VOTE_YES = "VOTE_YES"
+export const VOTE_NO = "VOTE_NO"
+export type Vote = typeof VOTE_YES | typeof VOTE_NO

@@ -58,7 +58,7 @@ Tick the boxes in this file as you go.
 **Claude Code checks:** tests for every count 5–10; R5 is a data table; R8 vs R9 knowledge differences tested.
 **Your review:** read the test names — do they match the rules you expect?
 
-### ☐ Step 3 — Engine: elections, votes, chaos
+### ☑ Step 3 — Engine: elections, votes, chaos
 **Prompt**
 > Do Step 3: implement R11–R25 in packages/engine: presidential rotation (incl. skipping executed players and Special Election return), Chancellor eligibility with term limits and the ≤5-alive rule, voting with the App rule host reveal (spec §6, including duty transfer and close-voting), election tracker, Chaos, and the Hitler check. Add a test for every rule and every edge case in spec §6.
 
