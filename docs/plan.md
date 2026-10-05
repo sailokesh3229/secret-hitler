@@ -120,7 +120,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 
 **Your review:** 5 phones (friends, or simulators + phones) join one room with ID + password; start becomes available at 5.
 
-### ☐ Step 11 — Game over the network
+### ☑ Step 11 — Game over the network
 **Prompt**
 > Do Step 11: run the engine on the server per room; validate every action; send each phone only `projectView` output; host vote reveal with duty transfer; power flows; Redis persistence with restart recovery; game history saved at game end. Add integration tests with scripted socket clients (tools/sim, test-only) covering a full game per player count, and the leak test on real socket payloads.
 

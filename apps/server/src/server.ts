@@ -1,11 +1,16 @@
-/* Composes the REST app and the Socket.IO server around one room service.
-   The room service announces each change and the realtime layer broadcasts it. */
+/* Composes the REST app, the game service and the Socket.IO server around the
+   room service. Room changes and game changes are announced by the services
+   and broadcast by the realtime layer. */
+import { randomBytes } from "node:crypto"
 import { Server as SocketIOServer } from "socket.io"
 import { buildApp } from "./app.js"
 import type { TokenVerifier } from "./auth/tokenVerifier.js"
+import { createGameService } from "./game/gameService.js"
+import { createMemoryHistory, type HistoryStore } from "./game/history.js"
+import { createMemoryKeyValue, type KeyValueClient } from "./game/gameStore.js"
 import { attachRealtime, broadcastRoom } from "./realtime/sockets.js"
-import { createRoomService } from "./rooms/roomService.js"
 import type { PasswordHasher } from "./rooms/passwords.js"
+import { createRoomService } from "./rooms/roomService.js"
 import type { RoomStore } from "./rooms/roomStore.js"
 import type { UserRepository } from "./users/userRepository.js"
 
@@ -16,6 +21,14 @@ export interface ServerDeps {
   hasher: PasswordHasher
   randomInt: (max: number) => number
   now: () => number
+  kv?: KeyValueClient
+  history?: HistoryStore
+  random?: () => number
+}
+
+/* 32 random bits from the OS CSPRNG, as a float in [0, 1). */
+export function secureRandom(): number {
+  return randomBytes(4).readUInt32BE(0) / 0x100000000
 }
 
 export function composeServer(deps: ServerDeps) {
@@ -29,9 +42,26 @@ export function composeServer(deps: ServerDeps) {
       if (sockets.io) broadcastRoom(sockets.io, rooms, code)
     },
   })
-  const app = buildApp({ verifier: deps.verifier, users: deps.users, rooms })
+  const games = createGameService({
+    kv: deps.kv ?? createMemoryKeyValue(),
+    history: deps.history ?? createMemoryHistory(),
+    random: deps.random ?? secureRandom,
+    now: () => new Date(deps.now()),
+  })
+  const app = buildApp({
+    verifier: deps.verifier,
+    users: deps.users,
+    rooms,
+    onRoomStarted: (room) =>
+      games.start(
+        room.code,
+        room.seats.map((seat) => ({ userId: seat.userId, username: seat.username })),
+        room.hostId,
+        room.mode,
+      ),
+  })
   const io = new SocketIOServer(app.server, { cors: { origin: "*" } })
   sockets.io = io
-  attachRealtime(io, { verifier: deps.verifier, users: deps.users, rooms })
-  return { app, io, rooms }
+  attachRealtime(io, { verifier: deps.verifier, users: deps.users, rooms, games })
+  return { app, io, rooms, games }
 }

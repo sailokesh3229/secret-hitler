@@ -12,3 +12,4 @@ export const pingSchema = z.object({
 export type Ping = z.infer<typeof pingSchema>
 export * from "./username.js"
 export * from "./rooms.js"
+export * from "./game.js"

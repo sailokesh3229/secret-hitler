@@ -9,3 +9,5 @@ import { PROTOCOL_PACKAGE_NAME } from "@game/protocol"
 export const SIM_PACKAGE_NAME = "@game/sim"
 export const SIM_PLAYER_COUNT_RANGE: [number, number] = [MIN_PLAYER_COUNT, MAX_PLAYER_COUNT]
 export const SIM_DEPENDS_ON = [PROTOCOL_PACKAGE_NAME]
+export * from "./scriptedClient.js"
+export * from "./scriptedGame.js"

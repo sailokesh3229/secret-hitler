@@ -9,6 +9,9 @@ import { composeServer, type ServerDeps } from "./server.js"
 import { argon2Hasher } from "./rooms/passwords.js"
 import { createMemoryRoomStore } from "./rooms/roomStore.js"
 import { createMemoryUserRepository, createPrismaUserRepository } from "./users/userRepository.js"
+import { createMemoryKeyValue, type KeyValueClient } from "./game/gameStore.js"
+import { createMemoryHistory, createPrismaHistory } from "./game/history.js"
+import { Redis } from "ioredis"
 
 function baseDeps(verifier: TokenVerifier): ServerDeps {
   return {
@@ -18,6 +21,8 @@ function baseDeps(verifier: TokenVerifier): ServerDeps {
     hasher: argon2Hasher,
     randomInt: (max) => randomInt(max),
     now: () => Date.now(),
+    kv: createMemoryKeyValue(),
+    history: createMemoryHistory(),
   }
 }
 
@@ -37,7 +42,9 @@ if (isMain) {
   const port = Number(process.env.PORT ?? 4000)
   const host = process.env.HOST ?? "localhost"
   const prisma = new PrismaClient()
-  const deps = { ...baseDeps(chooseVerifier(process.env)), users: createPrismaUserRepository(prisma) }
+  const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null
+  const kv: KeyValueClient = redis ?? createMemoryKeyValue()
+  const deps = { ...baseDeps(chooseVerifier(process.env)), users: createPrismaUserRepository(prisma), kv, history: createPrismaHistory(prisma) }
   const { app } = composeServer(deps)
   void app.listen({ port, host })
 }

@@ -6,13 +6,14 @@ import type { FastifyReply } from "fastify"
 import { roomSettingsSchema, usernameProblem } from "@game/protocol"
 import type { TableMode } from "@game/protocol"
 import type { TokenVerifier, VerifiedIdentity } from "./auth/tokenVerifier.js"
-import { RoomError, type RoomErrorCode, type RoomService, type UserRef } from "./rooms/roomService.js"
+import { RoomError, type RoomErrorCode, type RoomService, type RoomView, type UserRef } from "./rooms/roomService.js"
 import { UsernameTakenError, type UserRepository } from "./users/userRepository.js"
 
 export interface AppDeps {
   verifier: TokenVerifier
   users: UserRepository
   rooms: RoomService
+  onRoomStarted?: (room: RoomView) => Promise<void>
 }
 
 const ROOM_ERROR_STATUS: Record<RoomErrorCode, number> = {
@@ -193,7 +194,11 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
   app.post<{ Params: { code: string } }>("/rooms/:code/start", async (request, reply) => {
     const user = await requireUser(request.headers.authorization, reply)
     if (user === null) return reply
-    return withRoomErrors(reply, () => deps.rooms.start(user, request.params.code))
+    return withRoomErrors(reply, async () => {
+      const view = deps.rooms.start(user, request.params.code)
+      await deps.onRoomStarted?.(view)
+      return view
+    })
   })
 
   return app
