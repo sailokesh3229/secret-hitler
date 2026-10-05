@@ -1,0 +1,109 @@
+// Data model from docs/spec.md Sec 12. Enum-like columns are plain strings
+// holding the same neutral identifiers the engine uses (MODE_ONLINE,
+// ROLE_LEADER, WIN_REASON_...), so a rebrand never touches the database.
+// Room passwords are stored hashed (argon2), never in clear text.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  username    String       @unique
+  avatarId    Int?         @map("avatar_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  authMethods AuthMethod[]
+  hostedRooms Room[]       @relation("RoomHost")
+  memberships RoomMember[]
+  gamePlayers GamePlayer[]
+
+  @@map("users")
+}
+
+model AuthMethod {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  provider    String
+  providerUid String   @map("provider_uid")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUid])
+  @@map("auth_methods")
+}
+
+model Room {
+  id           String       @id @default(uuid())
+  roomCode     String       @unique @map("room_code")
+  passwordHash String       @map("password_hash")
+  hostUserId   String       @map("host_user_id")
+  mode         String
+  status       String
+  settings     Json
+  createdAt    DateTime     @default(now()) @map("created_at")
+  host         User         @relation("RoomHost", fields: [hostUserId], references: [id])
+  members      RoomMember[]
+  games        Game[]
+
+  @@map("rooms")
+}
+
+model RoomMember {
+  roomId      String   @map("room_id")
+  userId      String   @map("user_id")
+  seat        Int
+  isReady     Boolean  @default(false) @map("is_ready")
+  isConnected Boolean  @default(false) @map("is_connected")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("room_members")
+}
+
+model Game {
+  id          String       @id @default(uuid())
+  roomId      String       @map("room_id")
+  mode        String
+  playerCount Int          @map("player_count")
+  winner      String?
+  winReason   String?      @map("win_reason")
+  startedAt   DateTime     @default(now()) @map("started_at")
+  endedAt     DateTime?    @map("ended_at")
+  room        Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  players     GamePlayer[]
+  events      GameEvent[]
+
+  @@map("games")
+}
+
+model GamePlayer {
+  gameId String  @map("game_id")
+  userId String  @map("user_id")
+  seat   Int
+  role   String
+  alive  Boolean @default(true)
+  game   Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([gameId, userId])
+  @@map("game_players")
+}
+
+model GameEvent {
+  gameId    String   @map("game_id")
+  seq       Int
+  type      String
+  payload   Json
+  visibleTo String   @map("visible_to")
+  createdAt DateTime @default(now()) @map("created_at")
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@id([gameId, seq])
+  @@map("game_events")
+}

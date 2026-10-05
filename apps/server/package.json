@@ -9,16 +9,21 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
     "test": "vitest run"
   },
   "dependencies": {
     "@game/engine": "workspace:*",
     "@game/protocol": "workspace:*",
+    "@prisma/client": "^6",
     "fastify": "^5.2.1",
+    "firebase-admin": "^14.5.0",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "prisma": "^6",
     "tsx": "^4.19.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
