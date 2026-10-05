@@ -1,0 +1,96 @@
+/* Copy for the role reveal, game table and phase screens (spec Sec 4
+   S10-S19, Sec 6, Sec 7). Sentence case, and buttons name the action
+   exactly (CLAUDE.md copy rule). Votes are English Yes/No (D14). */
+export const gameCopy = {
+  roleTitle: "Your role",
+  roleHoldHint: "Press and hold the envelope to see your role. Let go to hide it.",
+  roleSeen: "I've seen my role",
+  teammatesTitle: "Your team",
+  noTeammates: "You know no one else's role.",
+
+  tableTitle: "Table",
+  liberalTrack: "Liberal policies",
+  fascistTrack: "Fascist policies",
+  failedElections: "Failed elections",
+  drawAndDiscard: (draw: number, discard: number) => `Draw pile ${draw} · Discard pile ${discard}`,
+  myRole: "My role",
+  log: "Log",
+  executedBanner: "You were executed. You can watch, but you can't talk, vote or be chosen.",
+
+  nominate: (name: string) => `Nominate ${name}`,
+  chooseChancellor: "Choose a Chancellor below.",
+  voteQuestion: "Do you want this government?",
+  voteCast: "Vote cast. Waiting for the other players.",
+  votesCounted: (voted: number, alive: number) => `${voted} of ${alive} votes in`,
+  waitingForReveal: (name: string) => `Waiting for ${name} to reveal the votes`,
+  allVotesIn: (alive: number) => `All ${alive} votes are in`,
+  yourReveal: "You now reveal the votes",
+  revealedElected: (yes: number, no: number) => `Government elected. ${yes} Yes, ${no} No.`,
+  revealedRejected: (yes: number, no: number, failed: number, limit: number) =>
+    `Government rejected. ${yes} Yes, ${no} No. Failed elections: ${failed} of ${limit}.`,
+  ballotsRevealed: "Ballots",
+
+  statusYourNomination: "Your turn: choose a Chancellor",
+  statusNominating: (name: string) => `${name} is choosing a Chancellor`,
+  statusVoting: "Everyone votes on the government",
+  statusRevealing: "Votes are being revealed",
+  statusDiscarding: (name: string) => `${name} is choosing a policy to discard`,
+  statusEnacting: (name: string) => `${name} is choosing a policy to enact`,
+  statusVetoAnswer: (name: string) => `${name} is answering the veto request`,
+  statusPower: (name: string, power: string) => `President ${name} has a power: ${power}`,
+  statusGameOver: "The game is over",
+  statusYouAreExecuted: "You were executed",
+
+  ineligibleNotAlive: "This player is no longer in the game.",
+  ineligiblePresident: "The President cannot be Chancellor.",
+  ineligibleLastChancellor: (name: string) => `${name} was Chancellor last round. Choose someone else.`,
+  ineligibleLastPresident: (name: string) => `${name} was President last round. Choose someone else.`,
+  moveNotAllowed: "That move is not allowed right now.",
+  notYourTurn: "It is not your turn for this.",
+  alreadyVoted: "You have already voted.",
+
+  waitingForPresident: (name: string) => `${name} is choosing`,
+  presidentTitle: "Choose a policy to discard",
+  presidentSub: "Tap a policy, then discard it. The rest goes to the Chancellor.",
+  chancellorTitle: "Choose a policy to enact",
+  chancellorSub: "Tap a policy, then enact it. The other one is discarded.",
+  discardConfirm: "Discard this policy",
+  enactConfirm: "Enact this policy",
+  requestVeto: "Request veto",
+  vetoRequestedTitle: "Veto requested",
+  vetoAskTitle: (name: string) => `${name} asks to veto this policy`,
+  vetoAskSub: "Agreeing discards both policies and counts as a failed election.",
+  agreeToVeto: "Agree to veto",
+  refuseVeto: "Refuse veto",
+  vetoRefusedNote: "The President refused the veto. The Chancellor must enact a policy.",
+
+  powerWaitingTitle: (name: string) => `President ${name} has a power`,
+  powerDone: "Done",
+  peekTitle: "The next three policies",
+  peekSub: "Their order will not change.",
+  investigationTitle: (name: string) => `${name}'s party`,
+  investigationHold: "Press and hold to view",
+
+  chaosTitle: "Three governments failed in a row.",
+  chaosBody: "The top policy is enacted.",
+  chaosContinue: "Continue",
+
+  logTitle: "Game log",
+  logEmpty: "Nothing has happened yet.",
+  gameOverTitle: "Game over",
+  gameOverWinner: (team: string) => `${team} win`,
+  gameOverHomeAction: "Home",
+  timelineTitle: "Full timeline",
+  rolesTitle: "Roles",
+
+  testTableBanner: "Test table. Passing the phone changes whose screen this is.",
+  passPhone: (name: string) => `Pass the phone to ${name}`,
+  dismiss: "Close",
+} as const
+
+export const winReasonCopy = {
+  WIN_REASON_LIBERAL_POLICIES: "Five Liberal policies were enacted.",
+  WIN_REASON_HITLER_EXECUTED: "Hitler was executed.",
+  WIN_REASON_FASCIST_POLICIES: "Six Fascist policies were enacted.",
+  WIN_REASON_HITLER_CHANCELLOR: "Hitler was elected Chancellor.",
+} as const

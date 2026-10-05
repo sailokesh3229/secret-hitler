@@ -15,6 +15,7 @@ import { FascistTrack } from "../src/components/FascistTrack.js"
 import { LiberalTrack } from "../src/components/LiberalTrack.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
 import { mockLobbyPlayers, type LobbyPlayer } from "../src/lib/mockServer.js"
+import { useGameStore } from "../src/game/store.js"
 
 const MIN_PLAYERS = 5
 const MAX_PLAYERS = 10
@@ -31,11 +32,21 @@ export default function LobbyScreen() {
   const meName = isHost ? MOCK_HOST_NAME : MOCK_PLAYER_NAME
   const [players, setPlayers] = useState<LobbyPlayer[]>(() => mockLobbyPlayers(startCount, params.state === "notReady"))
   const [reordering, setReordering] = useState(false)
+  const startLocalGame = useGameStore((store) => store.start)
+  const setViewer = useGameStore((store) => store.setViewer)
 
   const me = players.find((player) => player.name === meName)
   const canStart = isHost && players.length >= MIN_PLAYERS && players.length <= MAX_PLAYERS && players.every((player) => player.ready)
   const boardCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, players.length)) as PlayerCount
   const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : params.state === "error" ? "error" : "ready"
+
+  function startGame() {
+    const seats = players.map((player) => ({ id: player.name, name: player.name }))
+    const hostId = players[0]?.name ?? meName
+    startLocalGame(seats, hostId, false)
+    setViewer(meName)
+    router.replace("/role")
+  }
 
   function toggleReady() {
     setPlayers((current) => current.map((player) => (player.name === meName ? { ...player, ready: !player.ready } : player)))
@@ -111,7 +122,7 @@ export default function LobbyScreen() {
         <View style={styles.hostActions}>
           <Button label={reordering ? screenCopy.doneReordering : screenCopy.reorderSeats} variant="secondary" onPress={() => setReordering((value) => !value)} />
           <Button label={screenCopy.roomSettings} variant="secondary" disabled />
-          <Button label={screenCopy.startGame} disabled={!canStart} />
+          <Button label={screenCopy.startGame} disabled={!canStart} onPress={startGame} />
           {!canStart && <Text style={styles.waiting}>{screenCopy.startBlocked}</Text>}
         </View>
       )}

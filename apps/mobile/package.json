@@ -19,6 +19,7 @@
     "@game/theme": "workspace:*",
     "expo": "~57.0.26",
     "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.11",
     "expo-router": "~57.0.24",
     "expo-status-bar": "~57.0.1",

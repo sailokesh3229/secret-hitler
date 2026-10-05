@@ -10,13 +10,16 @@ import { Badge } from "./Badge.js"
 export interface SeatProps {
   name: string
   badges?: BadgeKind[]
+  compact?: boolean
 }
 
-export function Seat({ name, badges = [] }: SeatProps) {
+export function Seat({ name, badges = [], compact = false }: SeatProps) {
   return (
-    <View style={styles.container}>
-      <Avatar name={name} size={56} />
-      <Text style={styles.name}>{name}</Text>
+    <View style={[styles.container, compact && styles.compact]}>
+      <Avatar name={name} size={compact ? 40 : 56} />
+      <Text style={[styles.name, compact && styles.compactName]} numberOfLines={1}>
+        {name}
+      </Text>
       {badges.length > 0 && (
         <View style={styles.badgeRow}>
           {badges.map((kind) => (
@@ -29,6 +32,12 @@ export function Seat({ name, badges = [] }: SeatProps) {
 }
 
 const styles = StyleSheet.create({
+  compact: {
+    width: 70,
+  },
+  compactName: {
+    fontSize: fontSize.xs,
+  },
   container: {
     alignItems: "center",
     gap: spacing.xs,

@@ -81,6 +81,15 @@ const SECTIONS: { title: string; shortcuts: Shortcut[] }[] = [
     ],
   },
   {
+    title: "Game table (Steps 7-8)",
+    shortcuts: [
+      { label: "Scenario switcher", href: "/dev/scenario" },
+      { label: "Role reveal", href: "/role" },
+      { label: "Table", href: "/table" },
+      { label: "Game log", href: "/log" },
+    ],
+  },
+  {
     title: "Design review",
     shortcuts: [{ label: "Component Gallery", href: "/dev/gallery" }],
   },

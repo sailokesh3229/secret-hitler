@@ -89,7 +89,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 
 **Your review:** walk the path new user → Home → Create room → Lobby. Is "Create a room" the obvious first action? Do 10 players fit in the lobby?
 
-### ☐ Step 7 — Role reveal and game table · Design review 3
+### ☑ Step 7 — Role reveal and game table · Design review 3
 **Prompt**
 > Do Step 7: build S10 (role reveal with hold-to-reveal envelope, identical for all roles) and S11 (game table: boards, oval seating for 5–10, badges, status line, action panel, bottom bar). Add a dev "scenario switcher": choose player count, phase, and whose phone you are viewing, driven by the real packages/engine state.
 
