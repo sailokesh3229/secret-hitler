@@ -19,3 +19,4 @@ Thumbs.db
 coverage/
 apps/server/prisma/*.db
 .turbo/
+.localdb/
