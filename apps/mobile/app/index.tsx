@@ -1,17 +1,21 @@
-/* Temporary placeholder (plan.md Step 1) with a dev-only link to the
-   Component Gallery (Step 5) - Home itself is built in Step 6. */
-import { Link } from "expo-router"
+/* S1 Splash. Shows the logo while the login status is checked; with no
+   real auth yet (plan.md Step 9) it always moves on to Welcome. */
+import { useEffect } from "react"
+import { useRouter } from "expo-router"
 import { StyleSheet, Text, View } from "react-native"
-import { colors, fontFamily, fontSize, spacing } from "@game/theme"
+import { colors, fontFamily, fontSize, screenCopy, spacing } from "@game/theme"
 
-export default function HomeScreen() {
+const SPLASH_MS = 1200
+
+export default function SplashScreen() {
+  const router = useRouter()
+  useEffect(() => {
+    const timer = setTimeout(() => router.replace("/welcome"), SPLASH_MS)
+    return () => clearTimeout(timer)
+  }, [router])
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Secret Hitler Mobile</Text>
-      <Text style={styles.subtitle}>Scaffold placeholder - plan.md Step 1</Text>
-      <Link href="/dev/gallery" style={styles.link}>
-        Open the Component Gallery (dev)
-      </Link>
+      <Text style={styles.logo}>{screenCopy.appName}</Text>
     </View>
   )
 }
@@ -22,25 +26,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
-    gap: spacing.lg,
     backgroundColor: colors.background,
   },
-  title: {
-    fontFamily: fontFamily.document,
+  logo: {
+    fontFamily: fontFamily.documentBold,
     fontSize: fontSize.xxl,
-    color: colors.textOnDark,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontFamily: fontFamily.interface,
-    fontSize: fontSize.sm,
-    color: colors.textOnDarkMuted,
-    textAlign: "center",
-  },
-  link: {
-    fontFamily: fontFamily.interface,
-    fontSize: fontSize.md,
     color: colors.accent,
-    textDecorationLine: "underline",
+    textAlign: "center",
   },
 })

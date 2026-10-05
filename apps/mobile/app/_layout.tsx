@@ -8,6 +8,7 @@ import { LibreCaslonText_400Regular, LibreCaslonText_700Bold } from "@expo-googl
 import { useFonts } from "expo-font"
 import { Stack } from "expo-router"
 import { View } from "react-native"
+import { colors } from "@game/theme"
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -20,5 +21,5 @@ export default function RootLayout() {
   if (!fontsLoaded) {
     return <View />
   }
-  return <Stack />
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
 }

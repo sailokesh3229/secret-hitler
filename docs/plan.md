@@ -83,7 +83,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 
 **Your review (on phone):** Does it match your mood words? Are Liberal and Fascist easy to tell apart? Is text readable? Write notes in `docs/design-feedback.md` and apply them before Step 6.
 
-### ☐ Step 6 — Entry screens · Design review 2
+### ☑ Step 6 — Entry screens · Design review 2
 **Prompt**
 > Do Step 6: build screens S1–S9 from spec §4 with mock data: splash, welcome, sign up/log in (UI only, fake login), one-time code, choose username with avatar, Home with all sections and the resume banner, Create room (mode choice, password, settings, shows generated Room ID), Join room with all error states, Lobby (host and player views, 5 and 10 players, seat reorder for In-person, board preview). Add dev-menu shortcuts to each screen and each state.
 

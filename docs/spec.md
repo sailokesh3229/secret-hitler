@@ -453,3 +453,4 @@ The rulebook states CC BY-NC-SA 4.0: credit Mike Boxleiter, Tommy Maranges and M
 | D13 | Licensing path (approval vs rebrand) | Open — needed before store release only |
 | D14 | Vote ballots labelled Yes/No in English, not Ja/Nein (spec Sec 6, S12 still describe the rule by Ja/Nein for rulebook fidelity - the displayed copy is the English pair) | Decided (Review 1) |
 | D15 | Role card heading is always the Team (party membership), the specific role name is the small line underneath - applies to Liberal and Fascist too, not just Hitler, to keep every role card the same layout (CLAUDE.md rule 7) | Decided (Review 1) |
+| D16 | S5 "pick avatar" is replaced by "the app assigns an avatar, shown on S5 and never chosen by the player" (Review 1: avatars are assigned by the app). Interim until illustrated portraits exist. Owner to confirm | Decided (Review 1), follows D14/D15 |

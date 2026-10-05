@@ -4,7 +4,7 @@
 import { StyleSheet, Text, View } from "react-native"
 import { getFascistBoardSlots } from "@game/engine"
 import type { PlayerCount } from "@game/engine"
-import { colors, fontFamily, fontSize, radii, spacing } from "@game/theme"
+import { boardMarkers, colors, fontFamily, fontSize, radii, spacing } from "@game/theme"
 import { PowerIcon } from "./PowerIcon.js"
 
 export interface FascistTrackProps {
@@ -21,8 +21,8 @@ export function FascistTrack({ playerCount, enactedCount }: FascistTrackProps) {
         return (
           <View key={slot.slot} style={[styles.pip, filled && styles.pipFilled]}>
             {slot.power !== null && <PowerIcon power={slot.power} size={20} color={colors.textOnDark} />}
-            {slot.winsGame && <Text style={styles.marker}>Win</Text>}
-            {slot.unlocksVeto && <Text style={styles.marker}>Veto</Text>}
+            {slot.winsGame && <Text style={styles.marker}>{boardMarkers.win}</Text>}
+            {slot.unlocksVeto && <Text style={styles.marker}>{boardMarkers.veto}</Text>}
           </View>
         )
       })}

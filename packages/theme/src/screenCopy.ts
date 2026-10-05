@@ -1,0 +1,113 @@
+/* Copy for the entry, home, room and lobby screens (spec Sec 4, S1-S9)
+   and the shared board markers. CLAUDE.md rule 6: every user-facing
+   sentence in apps/mobile comes from a theme file. Functions take the
+   runtime values so the copy never builds strings by hand in a screen. */
+export const appName = "Secret Hitler"
+
+export const screenCopy = {
+  appName,
+  pitch: "Hidden roles, open lies, one table. Find the Fascists before they win.",
+  signUp: "Sign up",
+  logIn: "Log in",
+  back: "Back",
+  loading: "Loading...",
+  genericError: "Something went wrong. Try again.",
+  offline: "No connection. Check your internet and try again.",
+
+  loginTitle: "Sign up or log in",
+  loginHint: "Pick one way in. It only keeps your account safe.",
+  continueWithPhone: "Continue with phone",
+  continueWithEmail: "Continue with email",
+  continueWithGoogle: "Continue with Google",
+  continueWithApple: "Continue with Apple",
+
+  codeTitle: "Enter your code",
+  codeSent: (contact: string) => `We sent a 6-digit code to ${contact}.`,
+  codeContactPhone: "+1 555 010 0199",
+  codeContactEmail: "your email address",
+  resendCode: "Resend code",
+  resendIn: (seconds: number) => `Resend in ${seconds} s`,
+  verifyCode: "Verify code",
+  wrongCode: "That code did not match. Check the digits and try again.",
+
+  usernameTitle: "Choose a username",
+  usernameRules: "3 to 16 letters, numbers or _. Other players see this at the table.",
+  avatarHint: "The app gave you this avatar. It stays with your name.",
+  usernameTooShort: "Use at least 3 characters.",
+  usernameTooLong: "Use 16 characters or fewer.",
+  usernameBadCharacters: "Use only letters, numbers and _.",
+  usernameTaken: (name: string) => `${name} is taken. Try another name.`,
+  usernameAvailable: (name: string) => `${name} is available.`,
+  usernameChecking: "Checking availability...",
+  saveUsername: "Save username",
+
+  greeting: (name: string) => `Hi, ${name}`,
+  resumeBanner: (roomId: string) => `Your game in room ${roomId} is still running.`,
+  resumeGame: "Resume game",
+  createRoom: "Create a room",
+  joinRoom: "Join a room",
+  recentGames: "Recent games",
+  noGames: "No games yet. Finished games show up here.",
+  historyLine: (date: string, playerCount: number) => `${date} · ${playerCount} players`,
+  howToPlay: "How to play",
+  profile: "Profile",
+
+  createRoomTitle: "Create a room",
+  tableMode: "Table mode",
+  inPerson: "In-person",
+  online: "Online",
+  inPersonHint: "Everyone sits together. No chat and no timers.",
+  onlineHint: "Players join from their own phones. Chat and timers are available.",
+  roomPassword: "Room password",
+  roomPasswordHint: "4 to 8 characters. Players need it to join.",
+  passwordLength: "Use 4 to 8 characters.",
+  phaseTimers: "Phase timers",
+  tableChat: "Table chat",
+  createRoomAction: "Create room",
+  roomIdTitle: "Your Room ID",
+  roomIdShareHint: "Share this ID and the password with your friends.",
+  shareInvite: "Share invite",
+  shareMessage: (roomId: string) => `Join my Secret Hitler room. Room ID: ${roomId}`,
+  goToLobby: "Go to lobby",
+
+  joinRoomTitle: "Join a room",
+  roomIdLabel: "Room ID",
+  roomIdHint: "6 characters, shown on the host's phone.",
+  roomIdLength: "Room IDs have 6 characters.",
+  joinRoomAction: "Join room",
+  errNoRoom: "No room has this ID. Check the 6 characters and try again.",
+  errWrongPassword: "Wrong password. Try again.",
+  errLocked: "Too many wrong passwords. Wait 5 minutes, then try again.",
+  errFull: "This room is full. It holds up to 10 players.",
+  errStarted: "This game has already started. Ask the host for a new room.",
+
+  lobbyTitle: "Lobby",
+  playerCountLine: (count: number, max: number) => `${count} of ${max} players, minimum 5`,
+  readyAction: "I'm ready",
+  notReadyAction: "Not ready yet",
+  readyTag: "Ready",
+  notReadyTag: "Not ready",
+  connected: "Connected",
+  reconnecting: "Reconnecting",
+  leaveRoom: "Leave room",
+  startGame: "Start game",
+  startBlocked: "Start needs 5 to 10 players, and everyone ready.",
+  reorderSeats: "Reorder seats",
+  doneReordering: "Done reordering",
+  moveUp: "Move up",
+  moveDown: "Move down",
+  removePlayer: (name: string) => `Remove ${name}`,
+  roomSettings: "Room settings",
+  boardFor: (count: number) => `Board for ${count} players`,
+  waitingForHost: "Waiting for the host to start the game.",
+} as const
+
+export const modeNames = {
+  MODE_IN_PERSON: "In-person",
+  MODE_ONLINE: "Online",
+} as const
+
+export const boardMarkers = {
+  win: "Win",
+  veto: "Veto",
+} as const

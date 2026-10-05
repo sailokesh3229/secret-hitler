@@ -12,6 +12,8 @@ export interface TextFieldProps {
   errorText?: string
   disabled?: boolean
   secureTextEntry?: boolean
+  autoCapitalize?: "none" | "characters"
+  maxLength?: number
 }
 
 export function TextField({
@@ -22,6 +24,8 @@ export function TextField({
   errorText,
   disabled = false,
   secureTextEntry = false,
+  autoCapitalize = "characters",
+  maxLength,
 }: TextFieldProps) {
   const [isFocused, setIsFocused] = useState(false)
   const hasError = Boolean(errorText)
@@ -35,6 +39,9 @@ export function TextField({
         placeholderTextColor={colors.disabledText}
         editable={!disabled}
         secureTextEntry={secureTextEntry}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={false}
+        maxLength={maxLength}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         style={[
