@@ -8,6 +8,7 @@ import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { Button } from "../src/components/Button.js"
 import { StyleSheet, Text } from "react-native"
 import { colors, fontFamily, fontSize } from "@game/theme"
+import { firebaseConfigured } from "../src/lib/firebase.js"
 
 export default function LoginScreen() {
   const router = useRouter()
@@ -15,7 +16,7 @@ export default function LoginScreen() {
     <ScreenFrame title={screenCopy.loginTitle} onBack={() => router.back()}>
       <Text style={styles.hint}>{screenCopy.loginHint}</Text>
       <Button label={screenCopy.continueWithPhone} onPress={() => router.push({ pathname: "/code", params: { method: "phone" } })} />
-      <Button label={screenCopy.continueWithEmail} variant="secondary" onPress={() => router.push({ pathname: "/code", params: { method: "email" } })} />
+      <Button label={screenCopy.continueWithEmail} variant="secondary" onPress={() => router.push(firebaseConfigured() ? "/email" : { pathname: "/code", params: { method: "email" } })} />
       <Button label={screenCopy.continueWithGoogle} variant="secondary" onPress={() => router.push("/username")} />
       <Button label={screenCopy.continueWithApple} variant="secondary" onPress={() => router.push("/username")} />
     </ScreenFrame>

@@ -20,6 +20,12 @@ export const screenCopy = {
   continueWithEmail: "Continue with email",
   continueWithGoogle: "Continue with Google",
   continueWithApple: "Continue with Apple",
+  emailTitle: "Sign in with email",
+  emailLabel: "Email",
+  passwordLabel: "Password",
+  logInWithEmail: "Log in",
+  createAccountWithEmail: "Create account",
+  emailSignInFailed: "Could not sign in. Check the email and password, or create an account.",
 
   codeTitle: "Enter your code",
   codeSent: (contact: string) => `We sent a 6-digit code to ${contact}.`,
