@@ -1,9 +1,9 @@
-/* Finished-game history (spec Sec 12: games, game_players, game_events). The
-   room row is created on first use because the live room lives in memory
-   until rooms are persisted; its password hash is intentionally left empty
-   here, since history never needs the password. */
-import type { PrismaClient } from "@prisma/client"
-import type { Prisma } from "@prisma/client"
+/* Finished-game history (spec Sec 12: games, game_players, game_events, and
+   S20 game history). The room row is created on first use because the live
+   room lives in memory until rooms are persisted; its password hash is left
+   empty here, since history never needs the password. */
+import type { Prisma, PrismaClient } from "@prisma/client"
+import { partyMembership } from "@game/engine"
 import type { PublicGameEvent } from "@game/protocol"
 
 export interface GameSummary {
@@ -19,31 +19,76 @@ export interface GameSummary {
   events: PublicGameEvent[]
 }
 
+export interface GameListItem {
+  id: string
+  roomCode: string
+  mode: string
+  playerCount: number
+  winner: string | null
+  winReason: string | null
+  startedAt: string
+  endedAt: string
+  myRole: string
+  won: boolean
+}
+
+export interface GameDetail extends GameSummary {
+  id: string
+}
+
 export interface HistoryStore {
-  record(summary: GameSummary): Promise<void>
+  record(summary: GameSummary): Promise<string>
+  listForUser(userId: string): Promise<GameListItem[]>
+  get(id: string): Promise<GameDetail | null>
+  deleteForUser(userId: string): Promise<void>
+}
+
+function won(summary: GameSummary, userId: string): { myRole: string; won: boolean } {
+  const mine = summary.players.find((player) => player.userId === userId)
+  if (!mine) return { myRole: "", won: false }
+  const team = partyMembership(mine.role as Parameters<typeof partyMembership>[0])
+  return { myRole: mine.role, won: summary.winner === team }
 }
 
 export function createMemoryHistory(): HistoryStore & { all(): GameSummary[] } {
-  const games: GameSummary[] = []
+  const games: { id: string; summary: GameSummary }[] = []
   return {
     record: (summary) => {
-      games.push(summary)
+      const id = String(games.length + 1)
+      games.push({ id, summary })
+      return Promise.resolve(id)
+    },
+    listForUser: (userId) =>
+      Promise.resolve(
+        games
+          .filter((game) => game.summary.players.some((player) => player.userId === userId))
+          .map((game) => ({ id: game.id, roomCode: game.summary.roomCode, mode: game.summary.mode, playerCount: game.summary.playerCount, winner: game.summary.winner, winReason: game.summary.winReason, startedAt: game.summary.startedAt, endedAt: game.summary.endedAt, ...won(game.summary, userId) }))
+          .reverse(),
+      ),
+    get: (id) => {
+      const game = games.find((candidate) => candidate.id === id)
+      return Promise.resolve(game ? { id, ...game.summary } : null)
+    },
+    deleteForUser: (userId) => {
+      for (const game of games) {
+        game.summary.players = game.summary.players.map((player) => (player.userId === userId ? { ...player, userId: "deleted" } : player))
+      }
       return Promise.resolve()
     },
-    all: () => [...games],
+    all: () => games.map((game) => game.summary),
   }
 }
 
 export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
   return {
     async record(summary) {
-      await prisma.$transaction(async (tx) => {
+      return prisma.$transaction(async (tx) => {
         const room = await tx.room.upsert({
           where: { roomCode: summary.roomCode },
           create: { roomCode: summary.roomCode, passwordHash: "", hostUserId: summary.hostId, mode: summary.mode, status: "STARTED", settings: {} },
           update: { status: "STARTED" },
         })
-        await tx.game.create({
+        const game = await tx.game.create({
           data: {
             roomId: room.id,
             mode: summary.mode,
@@ -63,7 +108,76 @@ export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
             },
           },
         })
+        return game.id
       })
     },
+
+    async listForUser(userId) {
+      const rows = await prisma.gamePlayer.findMany({
+        where: { userId },
+        include: { game: { include: { room: true, players: true } } },
+        orderBy: { game: { endedAt: "desc" } },
+        take: 50,
+      })
+      return rows.map((row) => {
+        const summary = {
+          roomCode: row.game.room.roomCode,
+          hostId: row.game.room.hostUserId,
+          mode: row.game.mode,
+          playerCount: row.game.playerCount,
+          winner: row.game.winner,
+          winReason: row.game.winReason,
+          startedAt: row.game.startedAt.toISOString(),
+          endedAt: (row.game.endedAt ?? row.game.startedAt).toISOString(),
+          players: row.game.players.map((player) => ({ userId: player.userId, seat: player.seat, role: player.role, alive: player.alive })),
+          events: [],
+        }
+        return {
+          id: row.gameId,
+          roomCode: summary.roomCode,
+          mode: summary.mode,
+          playerCount: summary.playerCount,
+          winner: summary.winner,
+          winReason: summary.winReason,
+          startedAt: summary.startedAt,
+          endedAt: summary.endedAt,
+          ...won(summary, userId),
+        }
+      })
+    },
+
+    async get(id) {
+      const game = await prisma.game.findUnique({
+        where: { id },
+        include: { room: true, players: true, events: { orderBy: { seq: "asc" } } },
+      })
+      if (!game) return null
+      return {
+        id: game.id,
+        roomCode: game.room.roomCode,
+        hostId: game.room.hostUserId,
+        mode: game.mode,
+        playerCount: game.playerCount,
+        winner: game.winner,
+        winReason: game.winReason,
+        startedAt: game.startedAt.toISOString(),
+        endedAt: (game.endedAt ?? game.startedAt).toISOString(),
+        players: game.players.map((player) => ({ userId: player.userId, seat: player.seat, role: player.role, alive: player.alive })),
+        events: game.events.map((event) => event.payload as unknown as PublicGameEvent),
+      }
+    },
+
+    async deleteForUser(userId) {
+      await prisma.gamePlayer.updateMany({ where: { userId }, data: { userId: await anonymousId(prisma) } })
+    },
   }
+}
+
+/* A placeholder user keeps finished-game rows (and their history for the other
+   players) when a player deletes their account. */
+async function anonymousId(prisma: PrismaClient): Promise<string> {
+  const existing = await prisma.user.findUnique({ where: { username: "deleted-player" } })
+  if (existing) return existing.id
+  const created = await prisma.user.create({ data: { username: "deleted-player" } })
+  return created.id
 }

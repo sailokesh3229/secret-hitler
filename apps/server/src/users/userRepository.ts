@@ -24,6 +24,7 @@ export interface UserRepository {
   usernameTaken(username: string): Promise<boolean>
   findByIdentity(provider: string, providerUid: string): Promise<UserRecord | null>
   createUser(user: NewUser): Promise<UserRecord>
+  deleteUser(userId: string): Promise<void>
 }
 
 /* Usernames are unique ignoring case (spec S5: "unique"). */
@@ -42,6 +43,9 @@ export function createPrismaUserRepository(prisma: PrismaClient): UserRepository
         include: { user: true },
       })
       return row ? { id: row.user.id, username: row.user.username, provider, providerUid } : null
+    },
+    async deleteUser(userId) {
+      await prisma.user.delete({ where: { id: userId } })
     },
     async createUser(user) {
       try {
@@ -67,6 +71,11 @@ export function createMemoryUserRepository(): UserRepository {
     },
     findByIdentity(provider, providerUid) {
       return Promise.resolve(users.find((user) => user.provider === provider && user.providerUid === providerUid) ?? null)
+    },
+    deleteUser(userId) {
+      const index = users.findIndex((user) => user.id === userId)
+      if (index !== -1) users.splice(index, 1)
+      return Promise.resolve()
     },
     createUser(user) {
       if (users.some((existing) => existing.username.toLowerCase() === user.username.toLowerCase())) {

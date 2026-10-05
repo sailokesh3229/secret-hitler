@@ -8,7 +8,8 @@ import type { TokenVerifier } from "./auth/tokenVerifier.js"
 import { createGameService } from "./game/gameService.js"
 import { createMemoryHistory, type HistoryStore } from "./game/history.js"
 import { createMemoryKeyValue, type KeyValueClient } from "./game/gameStore.js"
-import { attachRealtime, broadcastRoom } from "./realtime/sockets.js"
+import { attachRealtime, broadcastGame, broadcastRoom } from "./realtime/sockets.js"
+import { createMemoryReports, type ReportStore } from "./game/reports.js"
 import type { PasswordHasher } from "./rooms/passwords.js"
 import { createRoomService } from "./rooms/roomService.js"
 import type { RoomStore } from "./rooms/roomStore.js"
@@ -24,6 +25,7 @@ export interface ServerDeps {
   kv?: KeyValueClient
   history?: HistoryStore
   random?: () => number
+  reports?: ReportStore
 }
 
 /* 32 random bits from the OS CSPRNG, as a float in [0, 1). */
@@ -42,26 +44,33 @@ export function composeServer(deps: ServerDeps) {
       if (sockets.io) broadcastRoom(sockets.io, rooms, code)
     },
   })
+  const reports = deps.reports ?? createMemoryReports()
+  const history = deps.history ?? createMemoryHistory()
   const games = createGameService({
     kv: deps.kv ?? createMemoryKeyValue(),
-    history: deps.history ?? createMemoryHistory(),
+    history,
     random: deps.random ?? secureRandom,
     now: () => new Date(deps.now()),
+    onChanged: (roomCode, events) => {
+      if (sockets.io) void broadcastGame(sockets.io, games, roomCode, events)
+    },
   })
   const app = buildApp({
     verifier: deps.verifier,
     users: deps.users,
     rooms,
+    history,
     onRoomStarted: (room) =>
       games.start(
         room.code,
         room.seats.map((seat) => ({ userId: seat.userId, username: seat.username })),
         room.hostId,
         room.mode,
+        room.settings.timers,
       ),
   })
   const io = new SocketIOServer(app.server, { cors: { origin: "*" } })
   sockets.io = io
-  attachRealtime(io, { verifier: deps.verifier, users: deps.users, rooms, games })
-  return { app, io, rooms, games }
+  attachRealtime(io, { verifier: deps.verifier, users: deps.users, rooms, games, reports })
+  return { app, io, rooms, games, reports }
 }

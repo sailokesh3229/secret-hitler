@@ -2,6 +2,7 @@
    and creating the account's username after Firebase login. Every route
    that acts on a player verifies the ID token first (CLAUDE.md rule 1). */
 import Fastify from "fastify"
+import type { HistoryStore } from "./game/history.js"
 import type { FastifyReply } from "fastify"
 import { roomSettingsSchema, usernameProblem } from "@game/protocol"
 import type { TableMode } from "@game/protocol"
@@ -14,6 +15,7 @@ export interface AppDeps {
   users: UserRepository
   rooms: RoomService
   onRoomStarted?: (room: RoomView) => Promise<void>
+  history: HistoryStore
 }
 
 const ROOM_ERROR_STATUS: Record<RoomErrorCode, number> = {
@@ -32,6 +34,9 @@ const ROOM_ERROR_STATUS: Record<RoomErrorCode, number> = {
   PASSWORD_TOO_LONG: 400,
 }
 
+const RATE_WINDOW_MS = 60000
+const RATE_LIMIT_PER_MINUTE = 120
+
 export interface AppOptions {
   logger?: boolean
 }
@@ -44,6 +49,19 @@ function bearerToken(header: string | undefined): string | null {
 
 export function buildApp(deps: AppDeps, options: AppOptions = {}) {
   const app = Fastify({ logger: options.logger ?? false })
+  const windows = new Map<string, { start: number; count: number }>()
+  app.addHook("onRequest", async (request, reply) => {
+    const now = Date.now()
+    const window = windows.get(request.ip)
+    if (!window || now - window.start >= RATE_WINDOW_MS) {
+      windows.set(request.ip, { start: now, count: 1 })
+      return
+    }
+    window.count += 1
+    if (window.count > RATE_LIMIT_PER_MINUTE) {
+      return reply.code(429).send({ code: "RATE_LIMITED" })
+    }
+  })
 
   async function identityOrNull(authorization: string | undefined): Promise<VerifiedIdentity | null> {
     const token = bearerToken(authorization)
@@ -199,6 +217,30 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
       await deps.onRoomStarted?.(view)
       return view
     })
+  })
+
+  app.delete("/me", async (request, reply) => {
+    const user = await requireUser(request.headers.authorization, reply)
+    if (user === null) return reply
+    await deps.history.deleteForUser(user.id)
+    await deps.users.deleteUser(user.id)
+    return reply.code(204).send()
+  })
+
+  app.get("/me/games", async (request, reply) => {
+    const user = await requireUser(request.headers.authorization, reply)
+    if (user === null) return reply
+    return deps.history.listForUser(user.id)
+  })
+
+  app.get<{ Params: { id: string } }>("/games/:id", async (request, reply) => {
+    const user = await requireUser(request.headers.authorization, reply)
+    if (user === null) return reply
+    const game = await deps.history.get(request.params.id)
+    if (game === null || !game.players.some((player) => player.userId === user.id)) {
+      return reply.code(404).send({ code: "GAME_NOT_FOUND" })
+    }
+    return game
   })
 
   return app
