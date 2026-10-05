@@ -1,3 +1,4 @@
+import { usePreventScreenCapture } from "expo-screen-capture"
 /* S14 Veto response. The President agrees (the policies are discarded and
    the election counts as failed) or refuses (the Chancellor must enact).
    Everyone else sees the waiting line. */
@@ -11,6 +12,7 @@ import { statusLineFor } from "../src/game/statusLine.js"
 import { useGameStore } from "../src/game/store.js"
 
 export default function VetoScreen() {
+  usePreventScreenCapture()
   const router = useRouter()
   const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)

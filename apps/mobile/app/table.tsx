@@ -29,6 +29,7 @@ import { LiberalTrack } from "../src/components/LiberalTrack.js"
 import { RevealedBallots } from "../src/components/RevealedBallots.js"
 import { Seat } from "../src/components/Seat.js"
 import { StatusLine } from "../src/components/StatusLine.js"
+import { Countdown } from "../src/components/Countdown.js"
 import { Toast } from "../src/components/Toast.js"
 import { ovalSeatSpots } from "../src/game/ovalLayout.js"
 import { statusLineFor } from "../src/game/statusLine.js"
@@ -51,6 +52,8 @@ export default function TableScreen() {
   const testTable = useGameStore((store) => store.testTable)
   const lastReveal = useGameStore((store) => store.lastReveal)
   const chaos = useGameStore((store) => store.chaos)
+  const roomMode = useGameStore((store) => store.roomMode)
+  const deadlineAt = useGameStore((store) => store.deadlineAt)
   const connection = useGameStore((store) => store.connection)
   const error = useGameStore((store) => store.error)
   const act = useGameStore((store) => store.act)
@@ -253,6 +256,7 @@ export default function TableScreen() {
         </View>
 
         <StatusLine text={statusLineFor(view, names, revealerId)} />
+        {deadlineAt !== null && <Countdown deadlineAt={deadlineAt} />}
 
         {lastReveal && (
           <View style={styles.revealBox}>
@@ -281,7 +285,7 @@ export default function TableScreen() {
 
       <View style={styles.bottomBar}>
         <Button label={gameCopy.log} variant="secondary" onPress={() => router.push("/log")} />
-        {testTable && <Button label={gameCopy.chatTitle} variant="secondary" onPress={() => router.push("/chat")} />}
+        {(testTable || roomMode === "MODE_ONLINE") && <Button label={gameCopy.chatTitle} variant="secondary" onPress={() => router.push("/chat")} />}
         <Button label={gameCopy.myRole} variant="secondary" onPress={() => router.push("/role")} />
       </View>
     </View>

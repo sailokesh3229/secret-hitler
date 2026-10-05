@@ -1,3 +1,4 @@
+import { usePreventScreenCapture } from "expo-screen-capture"
 /* S15 Presidential power screens (spec Sec 7). The President sees the power,
    its one-sentence description, the seat list with reasons for anyone who
    cannot be chosen, and a confirmation sheet before anything happens. Every
@@ -21,6 +22,7 @@ import { useGameStore } from "../src/game/store.js"
 import { playHaptic } from "../src/lib/haptics.js"
 
 export default function PowerScreen() {
+  usePreventScreenCapture()
   const router = useRouter()
   const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)

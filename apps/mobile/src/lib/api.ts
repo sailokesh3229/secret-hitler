@@ -94,17 +94,57 @@ export interface GameActionResult {
   message?: string
 }
 
-/* One socket per room screen: room updates, the viewer's own game:view, public
-   game events, and automatic re-subscribe after a reconnect (spec Sec 10). */
+export function mockAllowed(): boolean {
+  return __DEV__ && !apiEnabled()
+}
+
+export interface ChatLineView {
+  seq: number
+  authorId: string
+  authorName: string
+  text: string
+}
+
+export interface GameListItemView {
+  id: string
+  roomCode: string
+  mode: string
+  playerCount: number
+  winner: string | null
+  winReason: string | null
+  startedAt: string
+  endedAt: string
+  myRole: string
+  won: boolean
+}
+
+export const gamesApi = {
+  mine: () => request<GameListItemView[]>("GET", "/me/games"),
+  detail: (id: string) => request<{ id: string; players: { userId: string; username?: string; seat: number; role: string; alive: boolean }[]; events: { kind: string; actorId?: string; targetId?: string; reveal?: unknown; winner?: string; winReason?: string; enacted?: string; chaosPolicy?: string; seq: number }[]; winner: string | null; winReason: string | null; roomCode: string; mode: string; playerCount: number; startedAt: string; endedAt: string }>("GET", "/games/" + id),
+  deleteAccount: () => request<void>("DELETE", "/me"),
+}
+
+/* One socket per room screen: room updates, the viewer's own game:view with
+   its deadline, public events, online chat, and automatic re-subscribe after a
+   reconnect (spec Sec 10). `resync` reconnects when the app returns to the
+   foreground. */
 export function openRoomSocket(
   code: string,
   handlers: {
     onRoom: (view: RoomView) => void
     onGameView: (view: unknown) => void
     onEvents: (events: unknown[]) => void
+    onChatHistory: (lines: ChatLineView[]) => void
+    onChatMessage: (line: ChatLineView) => void
     onStatus: (status: "live" | "offline") => void
   },
-): { act: (action: unknown) => Promise<GameActionResult>; close: () => void } {
+): {
+  act: (action: unknown) => Promise<GameActionResult>
+  sendChat: (text: string) => Promise<GameActionResult>
+  reportChat: (seq: number) => Promise<GameActionResult>
+  resync: () => void
+  close: () => void
+} {
   const socket: Socket = io(BASE_URL, { auth: { token: sessionToken }, transports: ["websocket"], reconnection: true })
   socket.on("connect", () => {
     handlers.onStatus("live")
@@ -114,8 +154,15 @@ export function openRoomSocket(
   socket.on("room:update", (view: RoomView) => handlers.onRoom(view))
   socket.on("game:view", (view: unknown) => handlers.onGameView(view))
   socket.on("game:event", (events: unknown[]) => handlers.onEvents(events))
+  socket.on("chat:history", (lines: ChatLineView[]) => handlers.onChatHistory(lines))
+  socket.on("chat:message", (line: ChatLineView) => handlers.onChatMessage(line))
   return {
     act: (action) => socket.emitWithAck("game:action", action) as Promise<GameActionResult>,
+    sendChat: (text) => socket.emitWithAck("chat:send", { text }) as Promise<GameActionResult>,
+    reportChat: (seq) => socket.emitWithAck("chat:report", { seq }) as Promise<GameActionResult>,
+    resync: () => {
+      if (socket.disconnected) socket.connect()
+    },
     close: () => socket.disconnect(),
   }
 }

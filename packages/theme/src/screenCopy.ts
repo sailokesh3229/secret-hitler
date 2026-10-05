@@ -73,7 +73,7 @@ export const screenCopy = {
   roomIdTitle: "Your Room ID",
   roomIdShareHint: "Share this ID and the password with your friends.",
   shareInvite: "Share invite",
-  shareMessage: (roomId: string) => `Join my Secret Hitler room. Room ID: ${roomId}`,
+  shareMessage: (roomId: string) => `Join my Secret Hitler room. Room ID: ${roomId}. Open this link on your phone: secrethitler:///join-room?roomId=${roomId}`,
   goToLobby: "Go to lobby",
 
   joinRoomTitle: "Join a room",

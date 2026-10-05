@@ -10,7 +10,7 @@ import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js
 import { TextField } from "../src/components/TextField.js"
 import { Toast } from "../src/components/Toast.js"
 import { joinMockRoom, type JoinError } from "../src/lib/mockServer.js"
-import { api, ApiError, serverConfigured } from "../src/lib/api.js"
+import { api, ApiError, mockAllowed, serverConfigured } from "../src/lib/api.js"
 import { isRoomIdComplete, ROOM_ID_LENGTH } from "../src/lib/validation.js"
 
 type FormError = JoinError | "ID_LENGTH"
@@ -42,9 +42,9 @@ const DEV_ERRORS: Record<string, FormError> = {
 
 export default function JoinRoomScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ state?: string }>()
+  const params = useLocalSearchParams<{ state?: string; roomId?: string }>()
   const devError = params.state ? DEV_ERRORS[params.state] : undefined
-  const [roomId, setRoomId] = useState("")
+  const [roomId, setRoomId] = useState(() => (params.roomId ?? "").toUpperCase().slice(0, ROOM_ID_LENGTH))
   const [password, setPassword] = useState("")
   const [error, setError] = useState<FormError | null>(devError ?? null)
   const isLocked = error === "LOCKED"
@@ -68,6 +68,10 @@ export default function JoinRoomScreen() {
     }
     if (serverConfigured()) {
       void submitToServer()
+      return
+    }
+    if (!mockAllowed()) {
+      setError("NO_ROOM")
       return
     }
     const result = joinMockRoom(roomId, password)

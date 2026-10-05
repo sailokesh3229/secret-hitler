@@ -1,3 +1,4 @@
+import { usePreventScreenCapture } from "expo-screen-capture"
 /* S10 Role reveal. A sealed envelope; press and hold to show the role card
    and teammates, release to hide (spec Sec 9 signature interaction). The
    layout, animation length and haptic are identical for every role
@@ -15,6 +16,7 @@ import { useGameStore } from "../src/game/store.js"
 const STAGE_HEIGHT = 400
 
 export default function RoleScreen() {
+  usePreventScreenCapture()
   const router = useRouter()
   const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)

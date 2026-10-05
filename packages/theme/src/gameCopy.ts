@@ -113,6 +113,12 @@ export const gameCopy = {
   chatReport: "Report",
   chatReported: "Reported. Thanks for keeping the table fair.",
   chatSystemNote: "Table chat is shown here in Online mode.",
+  chatMutedTiles: "The President and Chancellor cannot chat while policies are in hand.",
+  chatMutedExecuted: "Executed players can watch, but cannot chat.",
+  chatRateLimited: "Too many messages. Wait a few seconds, then try again.",
+  chatInvalid: "Messages must have 1 to 300 characters.",
+  deadlineLabel: (time: string) => `Time left ${time}`,
+  timersOff: "No time limit in this game.",
 } as const
 
 export const winReasonCopy = {

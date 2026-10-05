@@ -1,3 +1,4 @@
+import { usePreventScreenCapture } from "expo-screen-capture"
 /* S13 Policy hand. President: 3 tiles, tap one to discard it. Chancellor:
    2 tiles, tap one to enact it, and "Request veto" once it is unlocked.
    Tap-to-select is the "drag or tap" of spec Sec 4 S13. Only the President or
@@ -17,6 +18,7 @@ import { statusLineFor } from "../src/game/statusLine.js"
 import { useGameStore } from "../src/game/store.js"
 
 export default function PoliciesScreen() {
+  usePreventScreenCapture()
   const router = useRouter()
   const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)

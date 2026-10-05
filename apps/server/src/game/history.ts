@@ -15,7 +15,7 @@ export interface GameSummary {
   winReason: string | null
   startedAt: string
   endedAt: string
-  players: { userId: string; seat: number; role: string; alive: boolean }[]
+  players: { userId: string; username?: string; seat: number; role: string; alive: boolean }[]
   events: PublicGameEvent[]
 }
 
@@ -149,7 +149,7 @@ export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
     async get(id) {
       const game = await prisma.game.findUnique({
         where: { id },
-        include: { room: true, players: true, events: { orderBy: { seq: "asc" } } },
+        include: { room: true, players: { include: { user: true } }, events: { orderBy: { seq: "asc" } } },
       })
       if (!game) return null
       return {
@@ -162,7 +162,7 @@ export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
         winReason: game.winReason,
         startedAt: game.startedAt.toISOString(),
         endedAt: (game.endedAt ?? game.startedAt).toISOString(),
-        players: game.players.map((player) => ({ userId: player.userId, seat: player.seat, role: player.role, alive: player.alive })),
+        players: game.players.map((player) => ({ userId: player.userId, username: player.user.username, seat: player.seat, role: player.role, alive: player.alive })),
         events: game.events.map((event) => event.payload as unknown as PublicGameEvent),
       }
     },

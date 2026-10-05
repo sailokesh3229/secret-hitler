@@ -138,7 +138,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 
 **Your review:** **First online game night** with players in different places. Test turning Wi-Fi off mid-vote and coming back.
 
-### ☐ Step 14 — Remaining screens
+### ☑ Step 14 — Remaining screens
 **Prompt**
 > Do Step 14: S20 game history (list, detail, stats), S21 profile & settings (incl. account deletion), S22 how to play (illustrated walkthrough from spec §5), credits & license screen per spec §15.
 

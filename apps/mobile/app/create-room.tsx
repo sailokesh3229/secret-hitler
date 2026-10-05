@@ -10,7 +10,7 @@ import { Toast } from "../src/components/Toast.js"
 import { Segmented } from "../src/components/Segmented.js"
 import { TextField } from "../src/components/TextField.js"
 import { createMockRoom, type MockRoom, type TableMode } from "../src/lib/mockServer.js"
-import { api, serverConfigured } from "../src/lib/api.js"
+import { api, mockAllowed, serverConfigured } from "../src/lib/api.js"
 import { passwordProblem } from "../src/lib/validation.js"
 
 const MODE_OPTIONS: { value: TableMode; label: string }[] = [
@@ -30,6 +30,10 @@ export default function CreateRoomScreen() {
 
   async function createRoomAction() {
     if (!serverConfigured()) {
+      if (!mockAllowed()) {
+        setServerError(screenCopy.offline)
+        return
+      }
       setRoom(createMockRoom(password))
       return
     }

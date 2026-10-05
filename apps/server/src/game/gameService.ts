@@ -26,7 +26,6 @@ import {
   PHASE_GAME_OVER,
   PHASE_NOMINATION,
   PHASE_PRESIDENT_POLICIES,
-  PHASE_PRESIDENTIAL_POWER,
   PHASE_VETO_RESPONSE,
   PHASE_VOTING,
   POLICY_LIBERAL,
@@ -60,6 +59,8 @@ export interface GameRecord {
   seq: number
   events: PublicGameEvent[]
   chat: ChatLine[]
+  turnKey: string
+  turnStartedAt: number
 }
 
 export type PerformResult = { ok: true; events: PublicGameEvent[] } | { ok: false; code: string; message?: string | undefined }
@@ -242,7 +243,9 @@ export function createGameService(deps: GameServiceDeps) {
       }
 
       const fresh = publicEvents(state, next, actorId, input, reveal, record.seq)
-      const updated: GameRecord = { ...record, state: next, seq: record.seq + fresh.length, events: [...record.events, ...fresh] }
+      const key = turnKey(next)
+      const turn = key === record.turnKey ? {} : { turnKey: key, turnStartedAt: deps.now().getTime() }
+      const updated: GameRecord = { ...record, state: next, seq: record.seq + fresh.length, events: [...record.events, ...fresh], ...turn }
       await save(updated)
       if (next.phase === PHASE_GAME_OVER) {
         cancel(roomCode)
@@ -273,6 +276,8 @@ export function createGameService(deps: GameServiceDeps) {
         seq: 0,
         events: [],
         chat: [],
+        turnKey: turnKey(state),
+        turnStartedAt: deps.now().getTime(),
       }
       await serial(roomCode, async () => {
         await save(record)
@@ -280,10 +285,11 @@ export function createGameService(deps: GameServiceDeps) {
       })
     },
 
-    async view(roomCode: string, viewerId: string): Promise<PlayerView | null> {
+    async view(roomCode: string, viewerId: string): Promise<(PlayerView & { deadlineAt: number | null }) | null> {
       const record = await load(roomCode)
       if (!record) return null
-      return projectView(record.state, viewerId)
+      const ms = record.timers ? PHASE_TIMERS_MS[record.state.phase] : undefined
+      return { ...projectView(record.state, viewerId), deadlineAt: ms === undefined ? null : record.turnStartedAt + ms }
     },
 
     async chatLog(roomCode: string, viewerId: string): Promise<ChatLine[] | null> {
@@ -414,6 +420,7 @@ function summaryOf(record: GameRecord): GameSummary {
     endedAt: new Date().toISOString(),
     players: state.playerIds.map((id, index) => ({
       userId: id,
+      username: record.names[id] ?? id,
       seat: index,
       role: state.roles.get(id) ?? "",
       alive: state.alivePlayers.has(id),
