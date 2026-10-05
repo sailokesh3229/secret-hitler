@@ -81,11 +81,36 @@ export const gameCopy = {
   gameOverWinner: (team: string) => `${team} win`,
   gameOverHomeAction: "Home",
   timelineTitle: "Full timeline",
+  discardsTitle: "Discards",
+  investigationsTitle: "Investigations",
   rolesTitle: "Roles",
 
   testTableBanner: "Test table. Passing the phone changes whose screen this is.",
   passPhone: (name: string) => `Pass the phone to ${name}`,
   dismiss: "Close",
+
+  openPolicyHand: "Open policy hand",
+  openVetoAnswer: "Answer veto request",
+  openPowerScreen: "Open power screen",
+  powerReasonSelf: "You",
+  powerReasonInvestigated: "Already investigated",
+  powerReasonExecuted: "Executed",
+  confirmInvestigate: (name: string) => `Investigate ${name}?`,
+  confirmSpecialElection: (name: string) => `Make ${name} the next President?`,
+  confirmExecution: (name: string) => `Execute ${name}? This can't be undone.`,
+  cancelPower: "Cancel",
+  privateResultsTitle: "Your investigations",
+  noInvestigations: "You have not investigated anyone yet.",
+  nothingToDo: "Nothing is waiting for you right now.",
+  continueAction: "Continue",
+
+  chatTitle: "Chat",
+  chatOnlineOnly: "Chat is part of Online mode. In-person tables talk face to face.",
+  chatPlaceholder: "Say something",
+  chatSend: "Send",
+  chatReport: "Report",
+  chatReported: "Reported. Thanks for keeping the table fair.",
+  chatSystemNote: "Table chat is shown here in Online mode.",
 } as const
 
 export const winReasonCopy = {

@@ -16,7 +16,7 @@ import { random, useGameStore } from "../../src/game/store.js"
 const SEAT_NAMES = ["Arjun", "Maya", "Priya", "Rohan", "Zara", "Dev", "Ishaan", "Kiara", "Neel", "Tara"]
 const COUNT_OPTIONS = [5, 6, 7, 8, 9, 10].map((count) => ({ value: String(count), label: String(count) }))
 
-export default function ScenarioScreen() {
+function ScenarioPanel() {
   const router = useRouter()
   const adopt = useGameStore((store) => store.adopt)
   const setViewer = useGameStore((store) => store.setViewer)
@@ -120,9 +120,20 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: colors.ink,
   },
+  hidden: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   message: {
     fontFamily: fontFamily.interface,
     fontSize: fontSize.sm,
     color: colors.danger,
   },
 })
+
+export default function ScenarioScreen() {
+  if (!__DEV__) {
+    return <View style={styles.hidden} />
+  }
+  return <ScenarioPanel />
+}

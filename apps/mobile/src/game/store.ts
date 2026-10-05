@@ -22,9 +22,10 @@ import {
   createInitialGameState,
   getVoteRevealer,
   isGovernmentElected,
+  POLICY_LIBERAL,
   tallyVotes,
 } from "@game/engine"
-import type { GameAction, GameState, PlayerId, RandomFn, Vote } from "@game/engine"
+import type { GameAction, GameState, Policy, PlayerId, RandomFn, Vote } from "@game/engine"
 import { gameCopy } from "@game/theme"
 import { describeTransition, type LogLine } from "./logText.js"
 
@@ -36,6 +37,11 @@ export interface RevealSnapshot {
   failedCount: number
 }
 
+export interface ChaosEvent {
+  id: number
+  policy: Policy
+}
+
 export interface SeatInput {
   id: PlayerId
   name: string
@@ -43,15 +49,18 @@ export interface SeatInput {
 
 export interface GameStore {
   state: GameState | null
+  seats: SeatInput[]
   names: Record<PlayerId, string>
   hostId: PlayerId | null
   viewerId: PlayerId | null
   testTable: boolean
   log: LogLine[]
   lastReveal: RevealSnapshot | null
+  chaos: ChaosEvent | null
   error: string | null
   start: (seats: SeatInput[], hostId: PlayerId, testTable: boolean) => void
   adopt: (state: GameState, seats: SeatInput[], hostId: PlayerId, testTable: boolean) => void
+  restart: () => void
   setViewer: (playerId: PlayerId) => void
   perform: (actorId: PlayerId, action: GameAction) => boolean
   clearError: () => void
@@ -67,46 +76,48 @@ function namesById(seats: SeatInput[]): Record<PlayerId, string> {
   return names
 }
 
-function isRevealAction(action: GameAction): action is { type: "reveal" } {
-  return action.type === "reveal"
-}
+const EMPTY_SESSION = { log: [], lastReveal: null, chaos: null, error: null }
 
 export const useGameStore = create<GameStore>((set, get) => ({
   state: null,
+  seats: [],
   names: {},
   hostId: null,
   viewerId: null,
   testTable: false,
-  log: [],
-  lastReveal: null,
-  error: null,
+  ...EMPTY_SESSION,
 
   start(seats, hostId, testTable) {
     const playerIds = seats.map((seat) => seat.id)
     const state = createInitialGameState(playerIds, hostId, random)
     set({
       state,
+      seats,
       names: namesById(seats),
       hostId,
       viewerId: playerIds[0] ?? null,
       testTable,
-      log: [],
-      lastReveal: null,
-      error: null,
+      ...EMPTY_SESSION,
     })
   },
 
   adopt(state, seats, hostId, testTable) {
     set({
       state,
+      seats,
       names: namesById(seats),
       hostId,
       viewerId: state.playerIds[0] ?? null,
       testTable,
-      log: [],
-      lastReveal: null,
-      error: null,
+      ...EMPTY_SESSION,
     })
+  },
+
+  restart() {
+    const { seats, hostId, testTable } = get()
+    if (seats.length > 0 && hostId !== null) {
+      get().start(seats, hostId, testTable)
+    }
   },
 
   setViewer(playerId) {
@@ -127,8 +138,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     let next: GameState
     let lastReveal: RevealSnapshot | null = get().lastReveal
+    let failedElection = action.type === "vetoRespond" && action.agree
     try {
-      if (isRevealAction(action)) {
+      if (action.type === "reveal") {
         const connected = new Set(state.alivePlayers)
         const revealer = getVoteRevealer(state.playerIds, hostId, state.alivePlayers, connected)
         if (revealer !== actorId) {
@@ -136,13 +148,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return false
         }
         const tally = tallyVotes(state.votingState)
+        const elected = isGovernmentElected(tally, state.alivePlayers.size)
         lastReveal = {
           votes: Object.fromEntries(state.votingState.votes) as Record<PlayerId, Vote>,
           yes: tally.yes,
           no: tally.no,
-          elected: isGovernmentElected(tally, state.alivePlayers.size),
+          elected,
           failedCount: state.electionTracker + 1,
         }
+        failedElection = !elected
         next = applyRevealVotes(state, revealer, connected, random)
       } else {
         next = applyAction(state, actorId, action)
@@ -153,10 +167,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const lines = describeTransition(state, next, actorId, action, names, lastReveal)
+    const chaosHappened = failedElection && state.electionTracker === 2 && next.electionTracker === 0
+    const chaosPolicy: Policy = next.liberalPoliciesEnacted > state.liberalPoliciesEnacted ? POLICY_LIBERAL : "POLICY_FASCIST"
     set({
       state: next,
       log: [...get().log, ...lines],
       lastReveal: action.type === "nominate" ? null : lastReveal,
+      chaos: chaosHappened ? { id: (get().chaos?.id ?? 0) + 1, policy: chaosPolicy } : get().chaos,
       error: null,
     })
     return true

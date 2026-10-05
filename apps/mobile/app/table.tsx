@@ -12,7 +12,12 @@ import {
   getPlayerCount,
   getVoteRevealer,
   PHASE_AWAIT_HOST_REVEAL,
+  PHASE_CHANCELLOR_POLICIES,
+  PHASE_GAME_OVER,
   PHASE_NOMINATION,
+  PHASE_PRESIDENT_POLICIES,
+  PHASE_PRESIDENTIAL_POWER,
+  PHASE_VETO_RESPONSE,
   PHASE_VOTING,
   projectView,
   VOTE_NO,
@@ -50,6 +55,7 @@ export default function TableScreen() {
   const viewerId = useGameStore((store) => store.viewerId)
   const testTable = useGameStore((store) => store.testTable)
   const lastReveal = useGameStore((store) => store.lastReveal)
+  const chaos = useGameStore((store) => store.chaos)
   const error = useGameStore((store) => store.error)
   const perform = useGameStore((store) => store.perform)
   const setViewer = useGameStore((store) => store.setViewer)
@@ -71,6 +77,14 @@ export default function TableScreen() {
   useEffect(() => {
     setBallot(null)
   }, [state?.phase, viewerId])
+
+  useEffect(() => {
+    if (chaos) router.push("/chaos")
+  }, [chaos?.id, router])
+
+  useEffect(() => {
+    if (state?.phase === PHASE_GAME_OVER) router.replace("/game-over")
+  }, [state?.phase, router])
 
   if (!state || !viewerId || hostId === null) {
     return (
@@ -166,8 +180,20 @@ export default function TableScreen() {
         </View>
       )
     }
+    if (state?.phase === PHASE_PRESIDENT_POLICIES && view.presidentId === me) {
+      return <Button label={gameCopy.openPolicyHand} onPress={() => router.push("/policies")} />
+    }
+    if (state?.phase === PHASE_CHANCELLOR_POLICIES && view.chancellorNomineeId === me) {
+      return <Button label={gameCopy.openPolicyHand} onPress={() => router.push("/policies")} />
+    }
+    if (state?.phase === PHASE_VETO_RESPONSE && view.presidentId === me) {
+      return <Button label={gameCopy.openVetoAnswer} onPress={() => router.push("/veto")} />
+    }
+    if (state?.phase === PHASE_PRESIDENTIAL_POWER) {
+      return <Button label={gameCopy.openPowerScreen} onPress={() => router.push("/power")} />
+    }
     if (state?.phase === PHASE_AWAIT_HOST_REVEAL) {
-      if (revealerId === viewerId) {
+      if (revealerId === me) {
         return (
           <View style={styles.actionStack}>
             <Text style={styles.waiting}>{gameCopy.allVotesIn(view.alivePlayers.length)}</Text>
@@ -255,6 +281,7 @@ export default function TableScreen() {
 
       <View style={styles.bottomBar}>
         <Button label={gameCopy.log} variant="secondary" onPress={() => router.push("/log")} />
+        {testTable && <Button label={gameCopy.chatTitle} variant="secondary" onPress={() => router.push("/chat")} />}
         <Button label={gameCopy.myRole} variant="secondary" onPress={() => router.push("/role")} />
       </View>
     </View>

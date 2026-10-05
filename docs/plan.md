@@ -95,7 +95,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 
 **Your review:** check 5 and 10 players on a small phone; check each role's reveal looks identical in layout and timing; check status line wording.
 
-### ☐ Step 8 — Every phase, playable locally · Design review 4
+### ☑ Step 8 — Every phase, playable locally · Design review 4
 **Prompt**
 > Do Step 8: build S12–S19: voting with ballots and host "Reveal votes" + flip-together animation (spec §6), policy hands with drag-or-tap discard/enact, veto request/response, the four power screens and waiting screens exactly as spec §7, executed-player view, Chaos, chat drawer (UI only), game log, game over with full timeline. Add a dev-only "test table" mode where one tester plays every seat in turn against the local engine, so a full game can be clicked through on one phone. This mode must never be available in production builds.
 
