@@ -88,6 +88,8 @@ export const gameCopy = {
   testTableBanner: "Test table. Passing the phone changes whose screen this is.",
   passPhone: (name: string) => `Pass the phone to ${name}`,
   dismiss: "Close",
+  offlineTable: "Connection lost. Waiting for the table to come back.",
+  reconnecting: "Reconnecting to the table...",
 
   openPolicyHand: "Open policy hand",
   openVetoAnswer: "Answer veto request",

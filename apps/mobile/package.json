@@ -16,6 +16,7 @@
     "@expo-google-fonts/libre-caslon-text": "^0.2.3",
     "@expo/metro-runtime": "~57.0.16",
     "@game/engine": "workspace:*",
+    "@game/protocol": "workspace:^",
     "@game/theme": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.26",

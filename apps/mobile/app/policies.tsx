@@ -1,13 +1,13 @@
 /* S13 Policy hand. President: 3 tiles, tap one to discard it. Chancellor:
    2 tiles, tap one to enact it, and "Request veto" once it is unlocked.
-   Tap-to-select is the "drag or tap" of spec Sec 4 S13; drag is a later
-   refinement. Only the President or the Chancellor sees a hand, so anyone
-   else gets the waiting message instead (spec Sec 8). */
+   Tap-to-select is the "drag or tap" of spec Sec 4 S13. Only the President or
+   the Chancellor sees a hand (spec Sec 8); everyone else gets the waiting
+   line. */
 import { useState } from "react"
 import { useRouter } from "expo-router"
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import { canRequestVeto, getPlayerCount, PHASE_CHANCELLOR_POLICIES, PHASE_PRESIDENT_POLICIES, projectView } from "@game/engine"
-import type { PlayerId } from "@game/engine"
+import { canRequestVeto, PHASE_CHANCELLOR_POLICIES, PHASE_PRESIDENT_POLICIES } from "@game/engine"
+import type { PlayerCount } from "@game/engine"
 import { colors, fontFamily, fontSize, gameCopy, HAPTIC_ENACTMENT, HAPTIC_SELECTION, policyLabels, radii, spacing } from "@game/theme"
 import { Button } from "../src/components/Button.js"
 import { PolicyTile } from "../src/components/PolicyTile.js"
@@ -18,19 +18,17 @@ import { useGameStore } from "../src/game/store.js"
 
 export default function PoliciesScreen() {
   const router = useRouter()
-  const state = useGameStore((store) => store.state)
-  const viewerId = useGameStore((store) => store.viewerId)
+  const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)
-  const perform = useGameStore((store) => store.perform)
+  const act = useGameStore((store) => store.act)
   const [selected, setSelected] = useState<number | null>(null)
 
-  if (!state || !viewerId) {
+  if (!view) {
     return <ScreenFrame title={gameCopy.presidentTitle} onBack={() => router.back()}><Text style={styles.text}>{gameCopy.nothingToDo}</Text></ScreenFrame>
   }
-  const me: PlayerId = viewerId
-  const view = projectView(state, me)
-  const isPresidentTurn = state.phase === PHASE_PRESIDENT_POLICIES && view.presidentId === me
-  const isChancellorTurn = state.phase === PHASE_CHANCELLOR_POLICIES && view.chancellorNomineeId === me
+  const me = view.viewerId
+  const isPresidentTurn = view.phase === PHASE_PRESIDENT_POLICIES && view.presidentId === me
+  const isChancellorTurn = view.phase === PHASE_CHANCELLOR_POLICIES && view.chancellorNomineeId === me
 
   if (!isPresidentTurn && !isChancellorTurn) {
     return (
@@ -41,13 +39,11 @@ export default function PoliciesScreen() {
   }
 
   const hand = view.myHand ?? []
-  const canVeto = isChancellorTurn && canRequestVeto(state.fascistPoliciesEnacted, getPlayerCount(state), state.vetoRequestedThisSession)
+  const canVeto = isChancellorTurn && canRequestVeto(view.fascistPoliciesEnacted, view.seats.length as PlayerCount, view.vetoRequestedThisSession)
 
-  function confirm() {
+  async function confirm() {
     if (selected === null) return
-    const ok = isPresidentTurn
-      ? perform(me, { type: "discard", tileIndex: selected })
-      : perform(me, { type: "enact", tileIndex: selected })
+    const ok = await act(isPresidentTurn ? { type: "discard", tileIndex: selected } : { type: "enact", tileIndex: selected })
     if (ok) {
       playHaptic(isChancellorTurn ? HAPTIC_ENACTMENT : HAPTIC_SELECTION)
       if (router.canGoBack()) router.back()
@@ -55,10 +51,7 @@ export default function PoliciesScreen() {
   }
 
   return (
-    <ScreenFrame
-      title={isPresidentTurn ? gameCopy.presidentTitle : gameCopy.chancellorTitle}
-      onBack={() => router.back()}
-    >
+    <ScreenFrame title={isPresidentTurn ? gameCopy.presidentTitle : gameCopy.chancellorTitle} onBack={() => router.back()}>
       <Text style={styles.text}>{isPresidentTurn ? gameCopy.presidentSub : gameCopy.chancellorSub}</Text>
       <View style={styles.hand}>
         {hand.map((policy, index) => (
@@ -77,12 +70,8 @@ export default function PoliciesScreen() {
           </Pressable>
         ))}
       </View>
-      <Button
-        label={isPresidentTurn ? gameCopy.discardConfirm : gameCopy.enactConfirm}
-        disabled={selected === null}
-        onPress={confirm}
-      />
-      {canVeto && <Button label={gameCopy.requestVeto} variant="secondary" onPress={() => perform(me, { type: "vetoRequest" })} />}
+      <Button label={isPresidentTurn ? gameCopy.discardConfirm : gameCopy.enactConfirm} disabled={selected === null} onPress={() => void confirm()} />
+      {canVeto && <Button label={gameCopy.requestVeto} variant="secondary" onPress={() => void act({ type: "vetoRequest" })} />}
     </ScreenFrame>
   )
 }

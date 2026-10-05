@@ -45,11 +45,21 @@ export default function LobbyScreen() {
   const live = serverConfigured()
   const startLocalGame = useGameStore((store) => store.start)
   const setViewer = useGameStore((store) => store.setViewer)
+  const connectRemote = useGameStore((store) => store.connectRemote)
 
   const [mockPlayers, setMockPlayers] = useState<LobbyPlayer[]>(() => mockLobbyPlayers(startCount, params.state === "notReady"))
   const [serverView, setServerView] = useState<RoomView | null>(null)
   const [reordering, setReordering] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+
+  function enterRemoteGame() {
+    connectRemote(roomId, { username: currentUsername() ?? "" })
+    router.replace("/role")
+  }
+
+  useEffect(() => {
+    if (live && serverView?.status === "STARTED") enterRemoteGame()
+  }, [live, serverView?.status])
 
   useEffect(() => {
     if (!live) return
@@ -126,9 +136,7 @@ export default function LobbyScreen() {
     if (live) {
       guard(async () => {
         setServerView(await api.startRoom(roomId))
-        startLocalGame(seats, hostName, false)
-        setViewer(meName)
-        router.replace("/role")
+        enterRemoteGame()
       })
       return
     }

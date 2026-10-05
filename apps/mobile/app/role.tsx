@@ -5,7 +5,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "expo-router"
 import { Animated, AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native"
-import { projectView } from "@game/engine"
 import { actionLabels, colors, fontFamily, fontSize, gameCopy, HAPTIC_SELECTION, motion, spacing } from "@game/theme"
 import { Button } from "../src/components/Button.js"
 import { Envelope } from "../src/components/Envelope.js"
@@ -17,8 +16,7 @@ const STAGE_HEIGHT = 400
 
 export default function RoleScreen() {
   const router = useRouter()
-  const state = useGameStore((store) => store.state)
-  const viewerId = useGameStore((store) => store.viewerId)
+  const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)
   const [revealed, setRevealed] = useState(false)
   const [reduceMotion, setReduceMotion] = useState(false)
@@ -50,7 +48,7 @@ export default function RoleScreen() {
     }
   }
 
-  if (!state || !viewerId) {
+  if (!view) {
     return (
       <View style={styles.screen}>
         <Button label={actionLabels.home} onPress={() => router.replace("/home")} />
@@ -58,7 +56,6 @@ export default function RoleScreen() {
     )
   }
 
-  const view = projectView(state, viewerId)
   const teammates = view.knownTeammates.map((id) => names[id] ?? id)
 
   return (

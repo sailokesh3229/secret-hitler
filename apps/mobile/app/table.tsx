@@ -1,16 +1,12 @@
-/* S11 Game table: boards, players in seat order around an oval with
-   badges, the status line, the action panel for the viewer's phase, and
-   the bottom bar. Every value comes from projectView(state, viewer), so a
-   phone only ever shows what its player is allowed to see (spec Sec 8).
-   Policy hands, veto, powers, chaos and game over get their own screens
-   in Step 8. */
+/* S11 Game table: boards, players in seat order around an oval with badges,
+   the status line, the action panel for the viewer's phase, and the bottom
+   bar. Every value comes from the viewer's view (server game:view in a real
+   game, or the local engine's projection in a test table), so a phone only
+   shows what its player may see (spec Sec 8). */
 import { useEffect, useState } from "react"
 import { useRouter } from "expo-router"
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import {
-  getChancellorEligibility,
-  getPlayerCount,
-  getVoteRevealer,
   PHASE_AWAIT_HOST_REVEAL,
   PHASE_CHANCELLOR_POLICIES,
   PHASE_GAME_OVER,
@@ -19,11 +15,10 @@ import {
   PHASE_PRESIDENTIAL_POWER,
   PHASE_VETO_RESPONSE,
   PHASE_VOTING,
-  projectView,
   VOTE_NO,
   VOTE_YES,
 } from "@game/engine"
-import type { PlayerId, Vote } from "@game/engine"
+import type { PlayerCount, PlayerId, Vote } from "@game/engine"
 import { actionLabels, colors, fontFamily, fontSize, gameCopy, HAPTIC_SELECTION, radii, spacing, voteLabels, type BadgeKind } from "@game/theme"
 import { ActionPanel } from "../src/components/ActionPanel.js"
 import { Ballot } from "../src/components/Ballot.js"
@@ -49,81 +44,84 @@ const TABLE_MAX_WIDTH = 360
 
 export default function TableScreen() {
   const router = useRouter()
-  const state = useGameStore((store) => store.state)
+  const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)
   const hostId = useGameStore((store) => store.hostId)
-  const viewerId = useGameStore((store) => store.viewerId)
+  const revealerId = useGameStore((store) => store.revealerId)
   const testTable = useGameStore((store) => store.testTable)
   const lastReveal = useGameStore((store) => store.lastReveal)
   const chaos = useGameStore((store) => store.chaos)
+  const connection = useGameStore((store) => store.connection)
   const error = useGameStore((store) => store.error)
-  const perform = useGameStore((store) => store.perform)
+  const act = useGameStore((store) => store.act)
   const setViewer = useGameStore((store) => store.setViewer)
   const clearError = useGameStore((store) => store.clearError)
   const { width } = useWindowDimensions()
   const [ballot, setBallot] = useState<Vote | null>(null)
   const [canCloseVoting, setCanCloseVoting] = useState(testTable)
 
+  const phase = view?.phase
   useEffect(() => {
-    if (testTable || state?.phase !== PHASE_VOTING) {
+    if (testTable || phase !== PHASE_VOTING) {
       setCanCloseVoting(testTable)
       return
     }
     setCanCloseVoting(false)
     const timer = setTimeout(() => setCanCloseVoting(true), CLOSE_VOTING_MS)
     return () => clearTimeout(timer)
-  }, [state?.phase, testTable])
+  }, [phase, testTable])
 
   useEffect(() => {
     setBallot(null)
-  }, [state?.phase, viewerId])
+  }, [phase, view?.viewerId])
 
   useEffect(() => {
     if (chaos) router.push("/chaos")
   }, [chaos?.id, router])
 
   useEffect(() => {
-    if (state?.phase === PHASE_GAME_OVER) router.replace("/game-over")
-  }, [state?.phase, router])
+    if (phase === PHASE_GAME_OVER) router.replace("/game-over")
+  }, [phase, router])
 
-  if (!state || !viewerId || hostId === null) {
+  if (!view) {
     return (
       <View style={styles.fallback}>
-        <Text style={styles.fallbackText}>{gameCopy.logEmpty}</Text>
+        <Text style={styles.fallbackText}>{connection === "offline" ? gameCopy.offlineTable : gameCopy.logEmpty}</Text>
         <Button label={actionLabels.home} onPress={() => router.replace("/home")} />
       </View>
     )
   }
 
-  const me: PlayerId = viewerId
-  const view = projectView(state, me)
+  const me: PlayerId = view.viewerId
+  const alive = view.alivePlayers
+  const seatIds = view.seats
   const name = (id: PlayerId | null): string => (id === null ? "" : names[id] ?? id)
-  const revealerId =
-    state.phase === PHASE_AWAIT_HOST_REVEAL
-      ? getVoteRevealer(state.playerIds, hostId, state.alivePlayers, new Set(state.alivePlayers))
-      : null
-  const isAlive = view.alivePlayers.includes(viewerId)
-  const hasVoted = view.votedPlayerIds.includes(viewerId)
+  const isAlive = alive.includes(me)
+  const hasVoted = view.votedPlayerIds.includes(me)
   const ovalWidth = Math.min(width - spacing.lg * 2, TABLE_MAX_WIDTH)
-  const spots = ovalSeatSpots(state.playerIds.length, ovalWidth, TABLE_HEIGHT, SEAT_WIDTH, SEAT_HEIGHT)
+  const spots = ovalSeatSpots(seatIds.length, ovalWidth, TABLE_HEIGHT, SEAT_WIDTH, SEAT_HEIGHT)
+  const playerCount = seatIds.length as PlayerCount
 
   function badgesFor(id: PlayerId): BadgeKind[] {
     const badges: BadgeKind[] = []
-    if (id === state?.presidentId) badges.push("president")
-    if (id === state?.lastElectedChancellorId) badges.push("chancellor")
-    if (id === state?.chancellorNomineeId && state.phase !== PHASE_NOMINATION) badges.push("nominee")
-    if (id === state?.lastElectedPresidentId) badges.push("termLimited")
-    if (view.votedPlayerIds.includes(id) && state?.phase === PHASE_VOTING) badges.push("voted")
-    if (!view.alivePlayers.includes(id)) badges.push("executed")
-    if (view.investigatedPlayerIds.includes(id)) badges.push("investigated")
-    if (view.notHitlerBadges.includes(id)) badges.push("notHitler")
+    if (id === view?.presidentId) badges.push("president")
+    if (id === view?.lastElectedChancellorId) badges.push("chancellor")
+    if (id === view?.chancellorNomineeId && phase !== PHASE_NOMINATION) badges.push("nominee")
+    if (id === view?.lastElectedPresidentId) badges.push("termLimited")
+    if (view?.votedPlayerIds.includes(id) && phase === PHASE_VOTING) badges.push("voted")
+    if (!alive.includes(id)) badges.push("executed")
+    if (view?.investigatedPlayerIds.includes(id)) badges.push("investigated")
+    if (view?.notHitlerBadges.includes(id)) badges.push("notHitler")
     if (id === hostId) badges.push("host")
     return badges
   }
 
-  const eligibleChancellors = state.playerIds.filter(
+  const eligibleChancellors = seatIds.filter(
     (id) =>
-      getChancellorEligibility(id, state.presidentId, state.alivePlayers, state.lastElectedPresidentId, state.lastElectedChancellorId).eligible,
+      id !== view.presidentId &&
+      alive.includes(id) &&
+      id !== view.lastElectedChancellorId &&
+      !(alive.length > 5 && id === view.lastElectedPresidentId),
   )
 
   function choose(next: Vote) {
@@ -135,17 +133,17 @@ export default function TableScreen() {
     if (!isAlive) {
       return <Text style={styles.waiting}>{gameCopy.executedBanner}</Text>
     }
-    if (state?.phase === PHASE_NOMINATION && view.presidentId === viewerId) {
+    if (phase === PHASE_NOMINATION && view?.presidentId === me) {
       return (
         <View style={styles.actionStack}>
           <Text style={styles.waiting}>{gameCopy.chooseChancellor}</Text>
           {eligibleChancellors.map((id) => (
-            <Button key={id} label={gameCopy.nominate(name(id))} onPress={() => perform(me, { type: "nominate", targetId: id })} />
+            <Button key={id} label={gameCopy.nominate(name(id))} onPress={() => void act({ type: "nominate", targetId: id })} />
           ))}
         </View>
       )
     }
-    if (state?.phase === PHASE_VOTING) {
+    if (phase === PHASE_VOTING) {
       if (hasVoted) {
         return <Text style={styles.waiting}>{gameCopy.voteCast}</Text>
       }
@@ -160,7 +158,7 @@ export default function TableScreen() {
                 accessibilityLabel={voteLabels[option]}
                 accessibilityState={{ checked: ballot === option }}
                 onPress={() => choose(option)}
-                style={[styles.ballotChoice, ballot === option && styles.ballotChoiceSelected]}
+                style={[styles.ballotChoice, ballot === option ? styles.ballotChoiceSelected : styles.ballotChoiceIdle]}
               >
                 <Ballot vote={option} />
                 <Text style={styles.ballotLabel}>{voteLabels[option]}</Text>
@@ -171,33 +169,33 @@ export default function TableScreen() {
             label={actionLabels.castVote}
             disabled={ballot === null}
             onPress={() => {
-              if (ballot !== null) perform(me, { type: "vote", vote: ballot })
+              if (ballot !== null) void act({ type: "vote", vote: ballot })
             }}
           />
-          {viewerId === hostId && (
-            <Button label={actionLabels.closeVoting} variant="secondary" disabled={!canCloseVoting} onPress={() => perform(me, { type: "closeVoting" })} />
+          {me === hostId && (
+            <Button label={actionLabels.closeVoting} variant="secondary" disabled={!canCloseVoting} onPress={() => void act({ type: "closeVoting" })} />
           )}
         </View>
       )
     }
-    if (state?.phase === PHASE_PRESIDENT_POLICIES && view.presidentId === me) {
+    if (phase === PHASE_PRESIDENT_POLICIES && view?.presidentId === me) {
       return <Button label={gameCopy.openPolicyHand} onPress={() => router.push("/policies")} />
     }
-    if (state?.phase === PHASE_CHANCELLOR_POLICIES && view.chancellorNomineeId === me) {
+    if (phase === PHASE_CHANCELLOR_POLICIES && view?.chancellorNomineeId === me) {
       return <Button label={gameCopy.openPolicyHand} onPress={() => router.push("/policies")} />
     }
-    if (state?.phase === PHASE_VETO_RESPONSE && view.presidentId === me) {
+    if (phase === PHASE_VETO_RESPONSE && view?.presidentId === me) {
       return <Button label={gameCopy.openVetoAnswer} onPress={() => router.push("/veto")} />
     }
-    if (state?.phase === PHASE_PRESIDENTIAL_POWER) {
+    if (phase === PHASE_PRESIDENTIAL_POWER) {
       return <Button label={gameCopy.openPowerScreen} onPress={() => router.push("/power")} />
     }
-    if (state?.phase === PHASE_AWAIT_HOST_REVEAL) {
+    if (phase === PHASE_AWAIT_HOST_REVEAL) {
       if (revealerId === me) {
         return (
           <View style={styles.actionStack}>
-            <Text style={styles.waiting}>{gameCopy.allVotesIn(view.alivePlayers.length)}</Text>
-            <Button label={actionLabels.revealVotes} onPress={() => perform(me, { type: "reveal" })} />
+            <Text style={styles.waiting}>{gameCopy.allVotesIn(alive.length)}</Text>
+            <Button label={actionLabels.revealVotes} onPress={() => void act({ type: "reveal" })} />
           </View>
         )
       }
@@ -213,26 +211,28 @@ export default function TableScreen() {
           <View style={styles.testTable}>
             <Text style={styles.testTableText}>{gameCopy.testTableBanner}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              {state.playerIds.map((id) => (
+              {seatIds.map((id) => (
                 <Pressable
                   key={id}
                   accessibilityRole="button"
                   accessibilityLabel={gameCopy.passPhone(name(id))}
                   onPress={() => setViewer(id)}
-                  style={[styles.chip, id === viewerId && styles.chipSelected]}
+                  style={[styles.chip, id === me && styles.chipSelected]}
                 >
-                  <Text style={[styles.chipText, id === viewerId && styles.chipTextSelected]}>{name(id)}</Text>
+                  <Text style={[styles.chipText, id === me && styles.chipTextSelected]}>{name(id)}</Text>
                 </Pressable>
               ))}
             </ScrollView>
           </View>
         )}
 
+        {connection === "offline" && <Toast text={gameCopy.reconnecting} tone="danger" />}
+
         <View style={styles.boards}>
           <Text style={styles.boardLabel}>{gameCopy.liberalTrack}</Text>
           <LiberalTrack enactedCount={view.liberalPoliciesEnacted} />
           <Text style={styles.boardLabel}>{gameCopy.fascistTrack}</Text>
-          <FascistTrack playerCount={getPlayerCount(state)} enactedCount={view.fascistPoliciesEnacted} />
+          <FascistTrack playerCount={playerCount} enactedCount={view.fascistPoliciesEnacted} />
           <View style={styles.trackerRow}>
             <ElectionTracker tracker={view.electionTracker} />
             <Text style={styles.counts}>{gameCopy.failedElections}</Text>
@@ -241,7 +241,7 @@ export default function TableScreen() {
         </View>
 
         <View style={[styles.oval, { width: ovalWidth, height: TABLE_HEIGHT }]}>
-          {state.playerIds.map((id, index) => {
+          {seatIds.map((id, index) => {
             const spot = spots[index]
             if (!spot) return null
             return (
@@ -258,7 +258,7 @@ export default function TableScreen() {
           <View style={styles.revealBox}>
             <Text style={styles.boardLabel}>{gameCopy.ballotsRevealed}</Text>
             <RevealedBallots
-              entries={state.playerIds
+              entries={seatIds
                 .filter((id) => lastReveal.votes[id] !== undefined)
                 .map((id) => ({ name: name(id), vote: lastReveal.votes[id] as Vote }))}
             />
@@ -392,7 +392,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: radii.control,
     borderWidth: 2,
-    borderColor: colors.border,
+  },
+  ballotChoiceIdle: {
+    borderColor: colors.background,
   },
   ballotChoiceSelected: {
     borderColor: colors.accent,

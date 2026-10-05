@@ -1,24 +1,13 @@
 /* S15 Presidential power screens (spec Sec 7). The President sees the power,
    its one-sentence description, the seat list with reasons for anyone who
    cannot be chosen, and a confirmation sheet before anything happens. Every
-   other player sees the waiting version: the same power and description
-   (spec Sec 7.3). Investigation results are private to the President and
-   are held down to view. */
+   other player sees the waiting version (spec Sec 7.3). Investigation
+   results are private to the President and are held down to view. */
 import { useState } from "react"
 import { useRouter } from "expo-router"
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import {
-  getInvestigateTargetError,
-  POWER_INVESTIGATE,
-  POWER_POLICY_PEEK,
-  POWER_TARGET_INVALID_ALREADY_INVESTIGATED,
-  POWER_TARGET_INVALID_NOT_ALIVE,
-  POWER_TARGET_INVALID_SELF,
-  PHASE_PRESIDENTIAL_POWER,
-  POWER_SPECIAL_ELECTION,
-  projectView,
-} from "@game/engine"
-import type { GameState, PlayerId } from "@game/engine"
+import { POWER_INVESTIGATE, POWER_POLICY_PEEK, PHASE_PRESIDENTIAL_POWER, POWER_SPECIAL_ELECTION } from "@game/engine"
+import type { PlayerId, PlayerView } from "@game/engine"
 import { actionLabels, colors, fontFamily, fontSize, gameCopy, HAPTIC_SELECTION, powerDescriptions, powerNames, radii, spacing, teamNames, type PowerToken, type TeamToken } from "@game/theme"
 import { Avatar } from "../src/components/Avatar.js"
 import { Button } from "../src/components/Button.js"
@@ -33,33 +22,25 @@ import { playHaptic } from "../src/lib/haptics.js"
 
 export default function PowerScreen() {
   const router = useRouter()
-  const state = useGameStore((store) => store.state)
-  const viewerId = useGameStore((store) => store.viewerId)
+  const view = useGameStore((store) => store.view)
   const names = useGameStore((store) => store.names)
-  const perform = useGameStore((store) => store.perform)
+  const act = useGameStore((store) => store.act)
   const [choice, setChoice] = useState<PlayerId | null>(null)
 
-  if (!state || !viewerId) {
+  if (!view) {
     return <ScreenFrame title={gameCopy.powerWaitingTitle("")} onBack={() => router.back()}><Text style={styles.text}>{gameCopy.nothingToDo}</Text></ScreenFrame>
   }
-  const me: PlayerId = viewerId
-  const game: GameState = state
-  const view = projectView(game, me)
-  const power = state.phase === PHASE_PRESIDENTIAL_POWER ? state.pendingPower : null
-  const isPresident = view.presidentId === me
+  const current: PlayerView = view
+  const me = current.viewerId
+  const power = current.phase === PHASE_PRESIDENTIAL_POWER ? current.pendingPower : null
+  const isPresident = current.presidentId === me
   const name = (id: PlayerId): string => names[id] ?? id
-  const presidentName = name(view.presidentId)
+  const presidentName = name(current.presidentId)
 
   function reasonFor(id: PlayerId): string | null {
-    if (power === POWER_INVESTIGATE) {
-      const error = getInvestigateTargetError(id, view.presidentId, game.alivePlayers, game.investigatedPlayerIds)
-      if (error === POWER_TARGET_INVALID_SELF) return gameCopy.powerReasonSelf
-      if (error === POWER_TARGET_INVALID_NOT_ALIVE) return gameCopy.powerReasonExecuted
-      if (error === POWER_TARGET_INVALID_ALREADY_INVESTIGATED) return gameCopy.powerReasonInvestigated
-      return null
-    }
-    if (id === view.presidentId) return gameCopy.powerReasonSelf
-    if (!game.alivePlayers.has(id)) return gameCopy.powerReasonExecuted
+    if (id === current.presidentId) return gameCopy.powerReasonSelf
+    if (!current.alivePlayers.includes(id)) return gameCopy.powerReasonExecuted
+    if (power === POWER_INVESTIGATE && current.investigatedPlayerIds.includes(id)) return gameCopy.powerReasonInvestigated
     return null
   }
 
@@ -69,9 +50,9 @@ export default function PowerScreen() {
     return gameCopy.confirmExecution(name(id))
   }
 
-  function confirm() {
+  async function confirm() {
     if (choice === null) return
-    if (perform(me, { type: "powerChoose", targetId: choice }) && router.canGoBack()) {
+    if ((await act({ type: "powerChoose", targetId: choice })) && router.canGoBack()) {
       setChoice(null)
       router.back()
     }
@@ -90,9 +71,7 @@ export default function PowerScreen() {
         </View>
       )}
 
-      {power === null && <Text style={styles.text}>{statusLineFor(view, names, null)}</Text>}
-
-      {power !== null && !isPresident && <Text style={styles.text}>{statusLineFor(view, names, null)}</Text>}
+      {(power === null || !isPresident) && <Text style={styles.text}>{statusLineFor(view, names, null)}</Text>}
 
       {power !== null && isPresident && power === POWER_POLICY_PEEK && (
         <View style={styles.body}>
@@ -103,13 +82,13 @@ export default function PowerScreen() {
               <PolicyTile key={index} policy={policy} />
             ))}
           </View>
-          <Button label={gameCopy.powerDone} onPress={() => perform(me, { type: "peekDone" }) && router.back()} />
+          <Button label={gameCopy.powerDone} onPress={() => void act({ type: "peekDone" }).then((ok) => ok && router.canGoBack() && router.back())} />
         </View>
       )}
 
       {power !== null && isPresident && power !== POWER_POLICY_PEEK && (
         <View style={styles.body}>
-          {state.playerIds.map((id) => {
+          {view.seats.map((id) => {
             const reason = reasonFor(id)
             const disabled = reason !== null
             return (
@@ -133,7 +112,7 @@ export default function PowerScreen() {
           })}
           {choice !== null && (
             <Sheet title={confirmText(choice)}>
-              <Button label={actionLabels.confirm} onPress={confirm} />
+              <Button label={actionLabels.confirm} onPress={() => void confirm()} />
               <Button label={gameCopy.cancelPower} variant="secondary" onPress={() => setChoice(null)} />
             </Sheet>
           )}

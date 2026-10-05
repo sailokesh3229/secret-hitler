@@ -87,3 +87,35 @@ export function subscribeToRoom(code: string, onView: (view: RoomView) => void):
     socket.disconnect()
   }
 }
+
+export interface GameActionResult {
+  ok: boolean
+  code?: string
+  message?: string
+}
+
+/* One socket per room screen: room updates, the viewer's own game:view, public
+   game events, and automatic re-subscribe after a reconnect (spec Sec 10). */
+export function openRoomSocket(
+  code: string,
+  handlers: {
+    onRoom: (view: RoomView) => void
+    onGameView: (view: unknown) => void
+    onEvents: (events: unknown[]) => void
+    onStatus: (status: "live" | "offline") => void
+  },
+): { act: (action: unknown) => Promise<GameActionResult>; close: () => void } {
+  const socket: Socket = io(BASE_URL, { auth: { token: sessionToken }, transports: ["websocket"], reconnection: true })
+  socket.on("connect", () => {
+    handlers.onStatus("live")
+    socket.emit("room:subscribe", { code })
+  })
+  socket.on("disconnect", () => handlers.onStatus("offline"))
+  socket.on("room:update", (view: RoomView) => handlers.onRoom(view))
+  socket.on("game:view", (view: unknown) => handlers.onGameView(view))
+  socket.on("game:event", (events: unknown[]) => handlers.onEvents(events))
+  return {
+    act: (action) => socket.emitWithAck("game:action", action) as Promise<GameActionResult>,
+    close: () => socket.disconnect(),
+  }
+}

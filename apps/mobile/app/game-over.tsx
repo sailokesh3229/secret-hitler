@@ -3,7 +3,7 @@
    Sec 8: revealed only at game over), then Play again or Home. */
 import { useRouter } from "expo-router"
 import { StyleSheet, Text, View } from "react-native"
-import { partyMembership, projectView } from "@game/engine"
+import { partyMembership } from "@game/engine"
 import type { PlayerId } from "@game/engine"
 import { actionLabels, colors, fontFamily, fontSize, gameCopy, logCopy, roleNames, spacing, teamNames, winReasonCopy, type TeamToken } from "@game/theme"
 import { Avatar } from "../src/components/Avatar.js"
@@ -16,13 +16,13 @@ import { useGameStore } from "../src/game/store.js"
 
 export default function GameOverScreen() {
   const router = useRouter()
-  const state = useGameStore((store) => store.state)
-  const viewerId = useGameStore((store) => store.viewerId)
+  const view = useGameStore((store) => store.view)
+  const testTable = useGameStore((store) => store.testTable)
   const names = useGameStore((store) => store.names)
   const log = useGameStore((store) => store.log)
   const restart = useGameStore((store) => store.restart)
 
-  if (!state || !viewerId || state.winner === null || state.winReason === null) {
+  if (!view || view.winner === null || view.winReason === null) {
     return (
       <ScreenFrame title={gameCopy.gameOverTitle} onBack={() => router.replace("/home")}>
         <Text style={styles.text}>{gameCopy.logEmpty}</Text>
@@ -30,9 +30,8 @@ export default function GameOverScreen() {
     )
   }
 
-  const view = projectView(state, viewerId as PlayerId)
   const reveal = view.gameOverReveal
-  const winnerToken: TeamToken = state.winner === "TEAM_LIBERAL" ? "TEAM_LIBERAL" : "TEAM_FASCIST"
+  const winnerToken: TeamToken = view.winner === "TEAM_LIBERAL" ? "TEAM_LIBERAL" : "TEAM_FASCIST"
   const name = (id: PlayerId): string => names[id] ?? id
 
   return (
@@ -40,11 +39,11 @@ export default function GameOverScreen() {
       <View style={styles.winner}>
         <Emblem team={winnerToken} size={56} />
         <Text style={styles.winnerTitle}>{gameCopy.gameOverWinner(teamNames[winnerToken])}</Text>
-        <Text style={styles.text}>{winReasonCopy[state.winReason]}</Text>
+        <Text style={styles.text}>{winReasonCopy[view.winReason]}</Text>
       </View>
 
       <Text style={styles.section}>{gameCopy.rolesTitle}</Text>
-      {state.playerIds.map((id) => {
+      {view.seats.map((id) => {
         const role = reveal?.roles[id]
         return (
           <View key={id} style={styles.row}>
@@ -81,13 +80,13 @@ export default function GameOverScreen() {
         ))}
       </View>
 
-      <Button
+      {testTable && <Button
         label={actionLabels.playAgain}
         onPress={() => {
           restart()
           router.replace("/table")
         }}
-      />
+      />}
       <Button label={actionLabels.home} variant="secondary" onPress={() => router.replace("/home")} />
     </ScreenFrame>
   )

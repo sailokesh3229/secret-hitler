@@ -1,11 +1,14 @@
-/* Local game store (plan.md Steps 7-8). Runs packages/engine on this
-   device so the table and every phase can be played before the server
-   exists (Step 11). Every screen reads only projectView(state, viewer),
-   never the full GameState (CLAUDE.md rule 2), so Step 12 can swap the
-   store for server views without touching the screens.
+/* Game store for the table screens (plan.md Steps 7-12). It has two sources:
 
-   Randomness is Math.random here. That is acceptable only for this
-   local, test-table build; the server uses secure randomness (Step 11). */
+   - remote (Step 12): the server runs the game. The phone gets only its own
+     game:view and public events over Socket.IO, and sends actions to be
+     checked there. This is the real In-person game.
+   - local (Steps 7-8, dev and test table only): packages/engine runs on this
+     device so every phase can be clicked through with one phone.
+
+   Every screen reads `view` (the viewer's projection) and never a full
+   GameState, so a phone cannot show what the server withholds (CLAUDE.md
+   rule 2). */
 import { create } from "zustand"
 import {
   actorError,
@@ -23,11 +26,14 @@ import {
   getVoteRevealer,
   isGovernmentElected,
   POLICY_LIBERAL,
+  projectView,
   tallyVotes,
 } from "@game/engine"
-import type { GameAction, GameState, Policy, PlayerId, RandomFn, Vote } from "@game/engine"
+import type { GameAction, GameState, PlayerView, Policy, PlayerId, RandomFn, Vote } from "@game/engine"
 import { gameCopy } from "@game/theme"
 import { describeTransition, type LogLine } from "./logText.js"
+import { describePublicEvent, type PublicEventLike } from "./remoteLog.js"
+import { openRoomSocket, type RoomSeat } from "../lib/api.js"
 
 export interface RevealSnapshot {
   votes: Record<PlayerId, Vote>
@@ -47,12 +53,25 @@ export interface SeatInput {
   name: string
 }
 
+export type ConnectionState = "idle" | "connecting" | "live" | "offline"
+
+interface RemoteHandle {
+  act: (action: unknown) => Promise<{ ok: boolean; code?: string }>
+  close: () => void
+}
+
 export interface GameStore {
+  mode: "local" | "remote"
+  roomCode: string | null
+  connection: ConnectionState
   state: GameState | null
-  seats: SeatInput[]
+  view: PlayerView | null
+  viewerId: PlayerId | null
   names: Record<PlayerId, string>
   hostId: PlayerId | null
-  viewerId: PlayerId | null
+  revealerId: PlayerId | null
+  connectedIds: PlayerId[]
+  seats: SeatInput[]
   testTable: boolean
   log: LogLine[]
   lastReveal: RevealSnapshot | null
@@ -62,11 +81,17 @@ export interface GameStore {
   adopt: (state: GameState, seats: SeatInput[], hostId: PlayerId, testTable: boolean) => void
   restart: () => void
   setViewer: (playerId: PlayerId) => void
+  connectRemote: (roomCode: string, me: { username: string }) => void
+  disconnectRemote: () => void
+  act: (action: GameAction) => Promise<boolean>
   perform: (actorId: PlayerId, action: GameAction) => boolean
   clearError: () => void
 }
 
 export const random: RandomFn = Math.random
+
+let remoteHandle: RemoteHandle | null = null
+let remoteView: PlayerView | null = null
 
 function namesById(seats: SeatInput[]): Record<PlayerId, string> {
   const names: Record<PlayerId, string> = {}
@@ -76,107 +101,127 @@ function namesById(seats: SeatInput[]): Record<PlayerId, string> {
   return names
 }
 
+function revealerOf(view: PlayerView | null, hostId: PlayerId | null, connected: PlayerId[]): PlayerId | null {
+  if (!view || hostId === null) return null
+  try {
+    return getVoteRevealer(view.seats, hostId, new Set(view.alivePlayers), new Set(connected))
+  } catch {
+    return null
+  }
+}
+
 const EMPTY_SESSION = { log: [], lastReveal: null, chaos: null, error: null }
 
 export const useGameStore = create<GameStore>((set, get) => ({
+  mode: "local",
+  roomCode: null,
+  connection: "idle",
   state: null,
-  seats: [],
+  view: null,
+  viewerId: null,
   names: {},
   hostId: null,
-  viewerId: null,
+  revealerId: null,
+  connectedIds: [],
+  seats: [],
   testTable: false,
   ...EMPTY_SESSION,
 
   start(seats, hostId, testTable) {
     const playerIds = seats.map((seat) => seat.id)
     const state = createInitialGameState(playerIds, hostId, random)
-    set({
-      state,
-      seats,
-      names: namesById(seats),
-      hostId,
-      viewerId: playerIds[0] ?? null,
-      testTable,
-      ...EMPTY_SESSION,
-    })
+    const viewerId = playerIds[0] ?? null
+    set(localSnapshot(state, seats, hostId, testTable, viewerId))
   },
 
   adopt(state, seats, hostId, testTable) {
-    set({
-      state,
-      seats,
-      names: namesById(seats),
-      hostId,
-      viewerId: state.playerIds[0] ?? null,
-      testTable,
-      ...EMPTY_SESSION,
-    })
+    set(localSnapshot(state, seats, hostId, testTable, state.playerIds[0] ?? null))
   },
 
   restart() {
-    const { seats, hostId, testTable } = get()
-    if (seats.length > 0 && hostId !== null) {
+    const { seats, hostId, testTable, mode } = get()
+    if (mode === "local" && seats.length > 0 && hostId !== null) {
       get().start(seats, hostId, testTable)
     }
   },
 
   setViewer(playerId) {
-    set({ viewerId: playerId, error: null })
+    const { state, seats, hostId, testTable } = get()
+    if (get().mode === "local" && state) {
+      set(localSnapshot(state, seats, hostId ?? "", testTable, playerId))
+      return
+    }
+    set({ viewerId: playerId })
+  },
+
+  connectRemote(roomCode, me) {
+    remoteHandle?.close()
+    remoteView = null
+    set({
+      mode: "remote",
+      roomCode,
+      connection: "connecting",
+      state: null,
+      view: null,
+      viewerId: null,
+      names: {},
+      hostId: null,
+      revealerId: null,
+      connectedIds: [],
+      seats: [],
+      testTable: false,
+      ...EMPTY_SESSION,
+    })
+    remoteHandle = openRoomSocket(roomCode, {
+      onStatus: (connection) => set({ connection }),
+      onRoom: (room) => {
+        const mine = room.seats.find((seat: RoomSeat) => seat.username === me.username)
+        const connectedIds = room.seats.filter((seat) => seat.connected).map((seat) => seat.userId)
+        set({
+          names: Object.fromEntries(room.seats.map((seat) => [seat.userId, seat.username])),
+          seats: room.seats.map((seat) => ({ id: seat.userId, name: seat.username })),
+          hostId: room.hostId,
+          connectedIds,
+          viewerId: mine?.userId ?? null,
+          revealerId: revealerOf(remoteView, room.hostId, connectedIds),
+          view: remoteView ?? get().view,
+        })
+      },
+      onGameView: (raw) => {
+        const view = raw as PlayerView
+        remoteView = view
+        const hostId = get().hostId
+        const connectedIds = get().connectedIds
+        set({ view, viewerId: view.viewerId, revealerId: revealerOf(view, hostId, connectedIds) })
+      },
+      onEvents: (events) => applyRemoteEvents(events as PublicEventLike[]),
+    })
+  },
+
+  disconnectRemote() {
+    remoteHandle?.close()
+    remoteHandle = null
+    remoteView = null
+    set({ connection: "idle", roomCode: null })
+  },
+
+  async act(action) {
+    const current = get()
+    if (current.mode === "local") {
+      if (current.viewerId === null) return false
+      return performLocal(current.viewerId, action)
+    }
+    if (!remoteHandle) return false
+    const reply = await remoteHandle.act(action)
+    if (!reply.ok) {
+      set({ error: remoteErrorCopy(reply.code ?? "", action, get().view, get().names) })
+      return false
+    }
+    return true
   },
 
   perform(actorId, action) {
-    const { state, names, hostId } = get()
-    if (!state || hostId === null) {
-      set({ error: gameCopy.moveNotAllowed })
-      return false
-    }
-    const blocked = actorError(state, actorId, action)
-    if (blocked !== null) {
-      set({ error: blockedCopy(blocked, state, action, names) })
-      return false
-    }
-
-    let next: GameState
-    let lastReveal: RevealSnapshot | null = get().lastReveal
-    let failedElection = action.type === "vetoRespond" && action.agree
-    try {
-      if (action.type === "reveal") {
-        const connected = new Set(state.alivePlayers)
-        const revealer = getVoteRevealer(state.playerIds, hostId, state.alivePlayers, connected)
-        if (revealer !== actorId) {
-          set({ error: gameCopy.notYourTurn })
-          return false
-        }
-        const tally = tallyVotes(state.votingState)
-        const elected = isGovernmentElected(tally, state.alivePlayers.size)
-        lastReveal = {
-          votes: Object.fromEntries(state.votingState.votes) as Record<PlayerId, Vote>,
-          yes: tally.yes,
-          no: tally.no,
-          elected,
-          failedCount: state.electionTracker + 1,
-        }
-        failedElection = !elected
-        next = applyRevealVotes(state, revealer, connected, random)
-      } else {
-        next = applyAction(state, actorId, action)
-      }
-    } catch {
-      set({ error: gameCopy.moveNotAllowed })
-      return false
-    }
-
-    const lines = describeTransition(state, next, actorId, action, names, lastReveal)
-    const chaosHappened = failedElection && state.electionTracker === 2 && next.electionTracker === 0
-    const chaosPolicy: Policy = next.liberalPoliciesEnacted > state.liberalPoliciesEnacted ? POLICY_LIBERAL : "POLICY_FASCIST"
-    set({
-      state: next,
-      log: [...get().log, ...lines],
-      lastReveal: action.type === "nominate" ? null : lastReveal,
-      chaos: chaosHappened ? { id: (get().chaos?.id ?? 0) + 1, policy: chaosPolicy } : get().chaos,
-      error: null,
-    })
-    return true
+    return performLocal(actorId, action)
   },
 
   clearError() {
@@ -184,7 +229,83 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 }))
 
-function applyAction(state: GameState, actorId: PlayerId, action: GameAction): GameState {
+
+function localSnapshot(state: GameState, seats: SeatInput[], hostId: PlayerId, testTable: boolean, viewerId: PlayerId | null) {
+  const names = namesById(seats)
+  const connectedIds = [...state.alivePlayers]
+  const view = viewerId ? projectView(state, viewerId) : null
+  return {
+    mode: "local" as const,
+    state,
+    seats,
+    names,
+    hostId,
+    testTable,
+    viewerId,
+    view,
+    connectedIds,
+    revealerId: revealerOf(view, hostId, connectedIds),
+    connection: "live" as const,
+    ...EMPTY_SESSION,
+  }
+}
+
+function performLocal(actorId: PlayerId, action: GameAction): boolean {
+  const { state, names, hostId, lastReveal } = useGameStore.getState()
+  if (!state || hostId === null) {
+    useGameStore.setState({ error: gameCopy.moveNotAllowed })
+    return false
+  }
+  const blocked = actorError(state, actorId, action)
+  if (blocked !== null) {
+    useGameStore.setState({ error: blockedCopy(blocked, state, action, names) })
+    return false
+  }
+
+  let next: GameState
+  let nextReveal: RevealSnapshot | null = lastReveal
+  let failedElection = action.type === "vetoRespond" && action.agree
+  try {
+    if (action.type === "reveal") {
+      const connected = new Set(state.alivePlayers)
+      const revealer = getVoteRevealer(state.playerIds, hostId, state.alivePlayers, connected)
+      if (revealer !== actorId) {
+        useGameStore.setState({ error: gameCopy.notYourTurn })
+        return false
+      }
+      const tally = tallyVotes(state.votingState)
+      const elected = isGovernmentElected(tally, state.alivePlayers.size)
+      nextReveal = {
+        votes: Object.fromEntries(state.votingState.votes) as Record<PlayerId, Vote>,
+        yes: tally.yes,
+        no: tally.no,
+        elected,
+        failedCount: state.electionTracker + 1,
+      }
+      failedElection = !elected
+      next = applyRevealVotes(state, revealer, connected, random)
+    } else {
+      next = applyLocal(state, actorId, action)
+    }
+  } catch {
+    useGameStore.setState({ error: gameCopy.moveNotAllowed })
+    return false
+  }
+
+  const lines = describeTransition(state, next, actorId, action, names, nextReveal)
+  const chaosHappened = failedElection && state.electionTracker === 2 && next.electionTracker === 0
+  const chaosPolicy: Policy = next.liberalPoliciesEnacted > state.liberalPoliciesEnacted ? POLICY_LIBERAL : "POLICY_FASCIST"
+  const previous = useGameStore.getState()
+  useGameStore.setState({
+    ...localSnapshot(next, previous.seats, hostId, previous.testTable, actorId),
+    log: [...previous.log, ...lines],
+    lastReveal: action.type === "nominate" ? null : nextReveal,
+    chaos: chaosHappened ? { id: (previous.chaos?.id ?? 0) + 1, policy: chaosPolicy } : previous.chaos,
+  })
+  return true
+}
+
+function applyLocal(state: GameState, actorId: PlayerId, action: GameAction): GameState {
   switch (action.type) {
     case "nominate":
       return applyNomination(state, action.targetId)
@@ -205,7 +326,7 @@ function applyAction(state: GameState, actorId: PlayerId, action: GameAction): G
     case "peekDone":
       return applyPowerPeekDone(state)
     case "reveal":
-      throw new Error("reveal is handled by perform")
+      throw new Error("reveal is handled by performLocal")
   }
 }
 
@@ -219,4 +340,42 @@ function blockedCopy(code: string, state: GameState, action: GameAction, names: 
   }
   if (code === "ACTOR_ALREADY_VOTED") return gameCopy.alreadyVoted
   return gameCopy.notYourTurn
+}
+
+function remoteErrorCopy(code: string, action: GameAction, view: PlayerView | null, names: Record<PlayerId, string>): string {
+  if (code === "INELIGIBLE_NOMINEE" && action.type === "nominate" && view) {
+    const name = names[action.targetId] ?? ""
+    if (action.targetId === view.presidentId) return gameCopy.ineligiblePresident
+    if (action.targetId === view.lastElectedChancellorId) return gameCopy.ineligibleLastChancellor(name)
+    if (action.targetId === view.lastElectedPresidentId) return gameCopy.ineligibleLastPresident(name)
+    return gameCopy.ineligibleNotAlive
+  }
+  if (code === "ACTOR_ALREADY_VOTED") return gameCopy.alreadyVoted
+  if (code === "NOT_REVEALER" || code.startsWith("ACTOR_")) return gameCopy.notYourTurn
+  return gameCopy.moveNotAllowed
+}
+
+function applyRemoteEvents(events: PublicEventLike[]): void {
+  const { names } = useGameStore.getState()
+  const lines: LogLine[] = []
+  let lastReveal = useGameStore.getState().lastReveal
+  let chaos = useGameStore.getState().chaos
+  for (const event of events) {
+    const text = describePublicEvent(event, names)
+    if (text) lines.push({ text })
+    if (event.kind === "NOMINATED") lastReveal = null
+    if (event.kind === "REVEALED" && event.reveal) {
+      lastReveal = {
+        votes: event.reveal.votes as Record<PlayerId, Vote>,
+        yes: event.reveal.yes,
+        no: event.reveal.no,
+        elected: event.reveal.elected,
+        failedCount: event.reveal.failedCount,
+      }
+    }
+    if (event.kind === "CHAOS" && event.chaosPolicy) {
+      chaos = { id: (chaos?.id ?? 0) + 1, policy: event.chaosPolicy as Policy }
+    }
+  }
+  useGameStore.setState({ log: [...useGameStore.getState().log, ...lines], lastReveal, chaos })
 }
