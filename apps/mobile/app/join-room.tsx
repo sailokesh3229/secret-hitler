@@ -10,6 +10,7 @@ import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js
 import { TextField } from "../src/components/TextField.js"
 import { Toast } from "../src/components/Toast.js"
 import { joinMockRoom, type JoinError } from "../src/lib/mockServer.js"
+import { api, ApiError, serverConfigured } from "../src/lib/api.js"
 import { isRoomIdComplete, ROOM_ID_LENGTH } from "../src/lib/validation.js"
 
 type FormError = JoinError | "ID_LENGTH"
@@ -21,6 +22,14 @@ const ERROR_COPY: Record<FormError, string> = {
   FULL: screenCopy.errFull,
   STARTED: screenCopy.errStarted,
   ID_LENGTH: screenCopy.roomIdLength,
+}
+
+const SERVER_ERROR_TO_FORM: Record<string, FormError> = {
+  ROOM_NOT_FOUND: "NO_ROOM",
+  WRONG_PASSWORD: "WRONG_PASSWORD",
+  ROOM_LOCKED: "LOCKED",
+  ROOM_FULL: "FULL",
+  GAME_STARTED: "STARTED",
 }
 
 const DEV_ERRORS: Record<string, FormError> = {
@@ -41,9 +50,24 @@ export default function JoinRoomScreen() {
   const isLocked = error === "LOCKED"
   const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : "ready"
 
+  async function submitToServer() {
+    try {
+      const view = await api.joinRoom(roomId, password)
+      setError(null)
+      router.replace({ pathname: "/lobby", params: { roomId: view.code, count: String(view.seats.length), role: "player" } })
+    } catch (caught) {
+      const code = caught instanceof ApiError ? caught.code : ""
+      setError(SERVER_ERROR_TO_FORM[code] ?? null)
+    }
+  }
+
   function submit() {
     if (!isRoomIdComplete(roomId)) {
       setError("ID_LENGTH")
+      return
+    }
+    if (serverConfigured()) {
+      void submitToServer()
       return
     }
     const result = joinMockRoom(roomId, password)

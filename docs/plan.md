@@ -114,7 +114,7 @@ No server yet. Screens run on **mock data**, and a hidden **dev menu** lets you 
 **You do first:** create the Firebase project and give Claude Code the config (never commit secrets — use `.env`).
 **Your review:** sign up on your phone with a real phone number; username is saved; log out and back in.
 
-### ☐ Step 10 — Rooms and lobby in real time
+### ☑ Step 10 — Rooms and lobby in real time
 **Prompt**
 > Do Step 10: REST + Socket.IO for rooms per spec S7–S9 and §13: create (generated Room ID, hashed password), join with all errors and rate limit, leave, kick, ready, seat reorder, settings, host transfer in lobby, start (5–10 players, all ready). Connect the app's lobby to the server.
 

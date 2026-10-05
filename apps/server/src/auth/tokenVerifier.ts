@@ -36,3 +36,15 @@ export function createFirebaseVerifier(env: NodeJS.ProcessEnv): TokenVerifier {
     },
   }
 }
+
+/* Local development only: accepts "dev:<name>" as a token so several phones
+   can join a room before Firebase is configured. Used only when the
+   environment sets ALLOW_DEV_LOGIN=true and Firebase is not configured. */
+export function createDevVerifier(): TokenVerifier {
+  return {
+    verify(idToken) {
+      if (!idToken.startsWith("dev:") || idToken.length <= "dev:".length) return Promise.resolve(null)
+      return Promise.resolve({ provider: "dev", providerUid: idToken.slice("dev:".length) })
+    },
+  }
+}

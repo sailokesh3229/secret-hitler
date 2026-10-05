@@ -6,9 +6,11 @@ import { Share, StyleSheet, Switch, Text, View } from "react-native"
 import { colors, fontFamily, fontSize, radii, screenCopy, spacing } from "@game/theme"
 import { Button } from "../src/components/Button.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
+import { Toast } from "../src/components/Toast.js"
 import { Segmented } from "../src/components/Segmented.js"
 import { TextField } from "../src/components/TextField.js"
 import { createMockRoom, type MockRoom, type TableMode } from "../src/lib/mockServer.js"
+import { api, serverConfigured } from "../src/lib/api.js"
 import { passwordProblem } from "../src/lib/validation.js"
 
 const MODE_OPTIONS: { value: TableMode; label: string }[] = [
@@ -24,6 +26,21 @@ export default function CreateRoomScreen() {
   const [timers, setTimers] = useState(true)
   const [chat, setChat] = useState(true)
   const [room, setRoom] = useState<MockRoom | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  async function createRoomAction() {
+    if (!serverConfigured()) {
+      setRoom(createMockRoom(password))
+      return
+    }
+    try {
+      const view = await api.createRoom(mode, password, { timers, chat })
+      setServerError(null)
+      setRoom({ id: view.code, password, playerCount: view.seats.length, started: false })
+    } catch {
+      setServerError(screenCopy.genericError)
+    }
+  }
   const problem = passwordProblem(password)
   const passwordError = password.length > 0 && problem !== null ? screenCopy.passwordLength : undefined
   const status: ScreenStatus =
@@ -73,10 +90,11 @@ export default function CreateRoomScreen() {
         </View>
       )}
 
+      {serverError && <Toast text={serverError} tone="danger" />}
       <Button
         label={screenCopy.createRoomAction}
         disabled={problem !== null}
-        onPress={() => setRoom(createMockRoom(password))}
+        onPress={() => void createRoomAction()}
       />
     </ScreenFrame>
   )

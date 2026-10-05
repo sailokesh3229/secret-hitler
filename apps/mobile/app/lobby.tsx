@@ -1,9 +1,14 @@
 /* S9 Lobby: seats in order with avatar, name, host badge, ready tag and
    connection dot. Host can reorder seats (In-person), remove players and
    start the game once 5-10 players are all ready. Players see the same
-   list with the host controls hidden. Start and settings are placeholders
-   until plan.md Steps 7 and 10. */
-import { useState } from "react"
+   list with the host controls hidden.
+
+   With a server configured (EXPO_PUBLIC_API_URL) the lobby shows the live
+   room: the view comes from the server and updates over Socket.IO, and
+   every action is sent to the server. Without one, the local mock keeps
+   the screen usable for design review. Start hands off to the local table
+   until Step 11 moves the game onto the server. */
+import { useEffect, useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { Share, StyleSheet, Text, View } from "react-native"
 import type { PlayerCount } from "@game/engine"
@@ -14,6 +19,7 @@ import { Button } from "../src/components/Button.js"
 import { FascistTrack } from "../src/components/FascistTrack.js"
 import { LiberalTrack } from "../src/components/LiberalTrack.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
+import { api, currentUsername, serverConfigured, subscribeToRoom, type RoomView } from "../src/lib/api.js"
 import { mockLobbyPlayers, type LobbyPlayer } from "../src/lib/mockServer.js"
 import { useGameStore } from "../src/game/store.js"
 
@@ -22,6 +28,13 @@ const MAX_PLAYERS = 10
 const MOCK_HOST_NAME = "Arjun"
 const MOCK_PLAYER_NAME = "Maya"
 
+interface Row {
+  id: string
+  name: string
+  ready: boolean
+  connected: boolean
+}
+
 export default function LobbyScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{ roomId?: string; count?: string; role?: string; state?: string }>()
@@ -29,75 +42,142 @@ export default function LobbyScreen() {
   const requestedCount = Number(params.count ?? "6")
   const startCount = Math.min(MAX_PLAYERS, Math.max(1, Number.isFinite(requestedCount) ? requestedCount : 6))
   const roomId = params.roomId ?? "K7M2QX"
-  const meName = isHost ? MOCK_HOST_NAME : MOCK_PLAYER_NAME
-  const [players, setPlayers] = useState<LobbyPlayer[]>(() => mockLobbyPlayers(startCount, params.state === "notReady"))
-  const [reordering, setReordering] = useState(false)
+  const live = serverConfigured()
   const startLocalGame = useGameStore((store) => store.start)
   const setViewer = useGameStore((store) => store.setViewer)
 
-  const me = players.find((player) => player.name === meName)
-  const canStart = isHost && players.length >= MIN_PLAYERS && players.length <= MAX_PLAYERS && players.every((player) => player.ready)
-  const boardCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, players.length)) as PlayerCount
+  const [mockPlayers, setMockPlayers] = useState<LobbyPlayer[]>(() => mockLobbyPlayers(startCount, params.state === "notReady"))
+  const [serverView, setServerView] = useState<RoomView | null>(null)
+  const [reordering, setReordering] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!live) return
+    let active = true
+    void api.getRoom(roomId).then((view) => {
+      if (active) setServerView(view)
+    }).catch(() => setServerError(screenCopy.genericError))
+    const stop = subscribeToRoom(roomId, (view) => {
+      if (active) setServerView(view)
+    })
+    return () => {
+      active = false
+      stop()
+    }
+  }, [live, roomId])
+
   const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : params.state === "error" ? "error" : "ready"
 
-  function startGame() {
-    const seats = players.map((player) => ({ id: player.name, name: player.name }))
-    const hostId = players[0]?.name ?? meName
-    startLocalGame(seats, hostId, false)
-    setViewer(meName)
-    router.replace("/role")
+  const rows: Row[] = live
+    ? (serverView?.seats ?? []).map((seat) => ({ id: seat.userId, name: seat.username, ready: seat.ready, connected: seat.connected }))
+    : mockPlayers.map((player) => ({ id: player.name, name: player.name, ready: player.ready, connected: player.connected }))
+  const meName = live ? currentUsername() ?? "" : isHost ? MOCK_HOST_NAME : MOCK_PLAYER_NAME
+  const me = rows.find((row) => row.name === meName)
+  const iAmHost = live ? serverView?.hostId === me?.id : isHost
+  const hostId = live ? serverView?.hostId ?? "" : rows[0]?.id ?? ""
+  const canStart = live
+    ? iAmHost && (serverView?.canStart ?? false)
+    : iAmHost && rows.length >= MIN_PLAYERS && rows.length <= MAX_PLAYERS && rows.every((row) => row.ready)
+  const boardCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, rows.length)) as PlayerCount
+
+  function guard(action: () => Promise<unknown>) {
+    setServerError(null)
+    action().catch(() => setServerError(screenCopy.genericError))
   }
 
   function toggleReady() {
-    setPlayers((current) => current.map((player) => (player.name === meName ? { ...player, ready: !player.ready } : player)))
+    if (live) {
+      guard(async () => setServerView(await api.setReady(roomId, !(me?.ready ?? false))))
+      return
+    }
+    setMockPlayers((current) => current.map((player) => (player.name === meName ? { ...player, ready: !player.ready } : player)))
   }
 
   function move(index: number, direction: -1 | 1) {
-    setPlayers((current) => {
-      const target = index + direction
-      if (target < 0 || target >= current.length) return current
+    const target = index + direction
+    if (target < 0 || target >= rows.length) return
+    const order = rows.map((row) => row.id)
+    const [moved] = order.splice(index, 1)
+    if (moved === undefined) return
+    order.splice(target, 0, moved)
+    if (live) {
+      guard(async () => setServerView(await api.reorderSeats(roomId, order)))
+      return
+    }
+    setMockPlayers((current) => {
       const next = [...current]
-      const [moved] = next.splice(index, 1)
-      if (!moved) return current
-      next.splice(target, 0, moved)
+      const [item] = next.splice(index, 1)
+      if (item) next.splice(target, 0, item)
       return next
     })
   }
 
-  function remove(name: string) {
-    setPlayers((current) => current.filter((player) => player.name !== name))
+  function remove(row: Row) {
+    if (live) {
+      guard(async () => setServerView(await api.kick(roomId, row.id)))
+      return
+    }
+    setMockPlayers((current) => current.filter((player) => player.name !== row.name))
+  }
+
+  function startGame() {
+    const seats = rows.map((row) => ({ id: row.name, name: row.name }))
+    const hostName = rows.find((row) => row.id === hostId)?.name ?? rows[0]?.name ?? meName
+    if (live) {
+      guard(async () => {
+        setServerView(await api.startRoom(roomId))
+        startLocalGame(seats, hostName, false)
+        setViewer(meName)
+        router.replace("/role")
+      })
+      return
+    }
+    startLocalGame(seats, hostName, false)
+    setViewer(meName)
+    router.replace("/role")
+  }
+
+  function leave() {
+    if (live) {
+      guard(async () => {
+        await api.leaveRoom(roomId)
+        router.replace("/home")
+      })
+      return
+    }
+    router.replace("/home")
   }
 
   return (
-    <ScreenFrame title={screenCopy.lobbyTitle} status={status} onBack={() => router.replace("/home")}>
+    <ScreenFrame title={screenCopy.lobbyTitle} status={status} errorText={serverError ?? undefined} onBack={leave}>
       <View style={styles.header}>
         <Text style={styles.roomId}>{roomId}</Text>
-        <Text style={styles.count}>{screenCopy.playerCountLine(players.length, MAX_PLAYERS)}</Text>
+        <Text style={styles.count}>{screenCopy.playerCountLine(rows.length, MAX_PLAYERS)}</Text>
         <Button label={screenCopy.shareInvite} variant="secondary" onPress={() => void Share.share({ message: screenCopy.shareMessage(roomId) })} />
       </View>
 
       <View style={styles.seats}>
-        {players.map((player, index) => (
-          <View key={player.name} style={styles.seat}>
+        {rows.map((row, index) => (
+          <View key={row.id} style={styles.seat}>
             <View style={styles.seatMain}>
-              <Avatar name={player.name} size={44} />
+              <Avatar name={row.name} size={44} />
               <View style={styles.seatText}>
-                <Text style={styles.name}>{player.name}</Text>
+                <Text style={styles.name}>{row.name}</Text>
                 <View style={styles.badges}>
-                  {index === 0 && <Badge kind="host" />}
-                  {!player.connected && <Badge kind="disconnected" />}
+                  {row.id === hostId && <Badge kind="host" />}
+                  {!row.connected && <Badge kind="disconnected" />}
                 </View>
               </View>
               <View style={styles.readyBlock}>
-                <View style={[styles.dot, { backgroundColor: player.connected ? colors.success : colors.danger }]} />
-                <Text style={styles.readyText}>{player.ready ? screenCopy.readyTag : screenCopy.notReadyTag}</Text>
+                <View style={[styles.dot, { backgroundColor: row.connected ? colors.success : colors.danger }]} />
+                <Text style={styles.readyText}>{row.ready ? screenCopy.readyTag : screenCopy.notReadyTag}</Text>
               </View>
             </View>
-            {isHost && reordering && (
+            {iAmHost && reordering && (
               <View style={styles.seatActions}>
                 <Button label={screenCopy.moveUp} variant="secondary" disabled={index === 0} onPress={() => move(index, -1)} />
-                <Button label={screenCopy.moveDown} variant="secondary" disabled={index === players.length - 1} onPress={() => move(index, 1)} />
-                {index !== 0 && <Button label={screenCopy.removePlayer(player.name)} variant="secondary" onPress={() => remove(player.name)} />}
+                <Button label={screenCopy.moveDown} variant="secondary" disabled={index === rows.length - 1} onPress={() => move(index, 1)} />
+                {row.id !== hostId && <Button label={screenCopy.removePlayer(row.name)} variant="secondary" onPress={() => remove(row)} />}
               </View>
             )}
           </View>
@@ -110,7 +190,7 @@ export default function LobbyScreen() {
         <LiberalTrack enactedCount={0} />
       </View>
 
-      {!isHost && <Text style={styles.waiting}>{screenCopy.waitingForHost}</Text>}
+      {!iAmHost && <Text style={styles.waiting}>{screenCopy.waitingForHost}</Text>}
 
       <Button
         label={me?.ready ? screenCopy.notReadyAction : screenCopy.readyAction}
@@ -118,7 +198,7 @@ export default function LobbyScreen() {
         onPress={toggleReady}
       />
 
-      {isHost && (
+      {iAmHost && (
         <View style={styles.hostActions}>
           <Button label={reordering ? screenCopy.doneReordering : screenCopy.reorderSeats} variant="secondary" onPress={() => setReordering((value) => !value)} />
           <Button label={screenCopy.roomSettings} variant="secondary" disabled />
@@ -127,7 +207,7 @@ export default function LobbyScreen() {
         </View>
       )}
 
-      <Button label={screenCopy.leaveRoom} variant="secondary" onPress={() => router.replace("/home")} />
+      <Button label={screenCopy.leaveRoom} variant="secondary" onPress={leave} />
     </ScreenFrame>
   )
 }

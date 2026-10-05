@@ -10,6 +10,7 @@ import { Button } from "../src/components/Button.js"
 import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { TextField } from "../src/components/TextField.js"
 import { isUsernameTaken } from "../src/lib/mockServer.js"
+import { api, apiEnabled, ApiError, DEV_LOGIN, setSessionToken, setSessionUsername } from "../src/lib/api.js"
 import { usernameProblem } from "../src/lib/validation.js"
 
 const CHECK_DEBOUNCE_MS = 400
@@ -19,6 +20,7 @@ export default function UsernameScreen() {
   const params = useLocalSearchParams<{ state?: string }>()
   const [name, setName] = useState("")
   const [checkedName, setCheckedName] = useState("")
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckedName(name), CHECK_DEBOUNCE_MS)
@@ -41,6 +43,22 @@ export default function UsernameScreen() {
             : undefined
   const status = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : "ready"
 
+  async function save() {
+    if (apiEnabled()) {
+      if (DEV_LOGIN) setSessionToken("dev:" + name)
+      try {
+        await api.saveUsername(name)
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== "ALREADY_HAS_USERNAME") {
+          setServerError(error instanceof ApiError && error.code === "USERNAME_TAKEN" ? screenCopy.usernameTaken(name) : screenCopy.genericError)
+          return
+        }
+      }
+      setSessionUsername(name)
+    }
+    router.replace("/home")
+  }
+
   return (
     <ScreenFrame title={screenCopy.usernameTitle} status={status} onBack={() => router.back()}>
       <View style={styles.avatarBlock}>
@@ -57,7 +75,8 @@ export default function UsernameScreen() {
         errorText={problemText}
       />
       <Text style={styles.rules}>{isChecking && name.length > 0 ? screenCopy.usernameChecking : available ? screenCopy.usernameAvailable(name) : screenCopy.usernameRules}</Text>
-      <Button label={screenCopy.saveUsername} disabled={!available} onPress={() => router.replace("/home")} />
+      {serverError && <Text style={styles.rules}>{serverError}</Text>}
+      <Button label={screenCopy.saveUsername} disabled={!available} onPress={() => void save()} />
     </ScreenFrame>
   )
 }

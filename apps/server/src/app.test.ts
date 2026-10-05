@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { buildApp } from "./app.js"
+import { composeServer } from "./server.js"
+import { createMemoryRoomStore } from "./rooms/roomStore.js"
 import type { TokenVerifier } from "./auth/tokenVerifier.js"
 import { createMemoryUserRepository } from "./users/userRepository.js"
 
@@ -11,8 +12,20 @@ const verifier: TokenVerifier = {
   },
 }
 
+const fakeHasher = {
+  hash: (password: string) => Promise.resolve("hash:" + password),
+  verify: (hash: string, password: string) => Promise.resolve(hash === "hash:" + password),
+}
+
 function newApp() {
-  return buildApp({ verifier, users: createMemoryUserRepository() })
+  return composeServer({
+    verifier,
+    users: createMemoryUserRepository(),
+    store: createMemoryRoomStore(),
+    hasher: fakeHasher,
+    randomInt: () => 0,
+    now: () => Date.now(),
+  }).app
 }
 
 describe("S5 username availability (Step 9)", () => {
