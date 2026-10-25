@@ -41,10 +41,19 @@ const isMain = process.argv[1] && process.argv[1].endsWith("index.ts")
 if (isMain) {
   const port = Number(process.env.PORT ?? 4000)
   const host = process.env.HOST ?? "localhost"
-  const prisma = new PrismaClient()
   const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null
   const kv: KeyValueClient = redis ?? createMemoryKeyValue()
-  const deps = { ...baseDeps(chooseVerifier(process.env)), users: createPrismaUserRepository(prisma), kv, history: createPrismaHistory(prisma) }
+  const deps: ServerDeps = { ...baseDeps(chooseVerifier(process.env)), kv }
+  /* Postgres is optional: without DATABASE_URL the server runs fully in
+     memory (same fallback kv already has), so a quick deploy needs no
+     database at all. Set DATABASE_URL to persist accounts and history. */
+  if (process.env.DATABASE_URL) {
+    const prisma = new PrismaClient()
+    deps.users = createPrismaUserRepository(prisma)
+    deps.history = createPrismaHistory(prisma)
+  } else {
+    console.log("No DATABASE_URL set: running with in-memory users and history (accounts and game history are lost on restart).")
+  }
   const { app } = composeServer(deps)
   void app.listen({ port, host })
 }
