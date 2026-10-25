@@ -72,5 +72,9 @@ export function composeServer(deps: ServerDeps) {
   const io = new SocketIOServer(app.server, { cors: { origin: "*" } })
   sockets.io = io
   attachRealtime(io, { verifier: deps.verifier, users: deps.users, rooms, games, reports })
+  for (const code of rooms.startedCodes()) {
+    void games.rearm(code)
+  }
+
   return { app, io, rooms, games, reports }
 }

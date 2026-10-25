@@ -66,6 +66,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   saveUsername: (username: string) => request<{ id: string; username: string }>("POST", "/me", { username }),
+  checkUsername: (username: string) => request<{ available: boolean }>("GET", "/usernames/" + encodeURIComponent(username) + "/availability"),
   createRoom: (mode: RoomView["mode"], password: string, settings: RoomView["settings"]) =>
     request<RoomView>("POST", "/rooms", { mode, password, settings }),
   joinRoom: (code: string, password: string) => request<RoomView>("POST", "/rooms/" + code + "/join", { password }),

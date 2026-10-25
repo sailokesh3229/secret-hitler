@@ -109,3 +109,49 @@ describe("turn timers (spec Sec 10)", () => {
     expect(timers.pending).toHaveLength(0)
   })
 })
+
+describe("timer re-arm after a restart (plan Step 11/13)", () => {
+  it("schedules only the time left, not a fresh full-length timer", async () => {
+    const kv = createMemoryKeyValue()
+    const history = createMemoryHistory()
+    let clock = 1_000_000
+    const seats = ["a", "b", "c", "d", "e"].map((id) => ({ userId: id, username: id.toUpperCase() }))
+
+    const timersBefore = manualTimers()
+    const before = createGameService({ kv, history, random: createSeededRandom(5), now: () => new Date(clock), timers: timersBefore })
+    await before.start("ROOM06", seats, "a", "MODE_ONLINE", true)
+    expect(timersBefore.pending[0]?.ms).toBe(PHASE_TIMERS_MS["PHASE_NOMINATION"])
+
+    // The process "restarts": 20 seconds pass, and a brand new service (with
+    // its own, empty in-memory timer state) picks up the persisted game.
+    clock += 20000
+    const timersAfter = manualTimers()
+    const after = createGameService({ kv, history, random: createSeededRandom(5), now: () => new Date(clock), timers: timersAfter })
+    await after.rearm("ROOM06")
+
+    const fullMs = PHASE_TIMERS_MS["PHASE_NOMINATION"] as number
+    expect(timersAfter.pending[0]?.ms).toBe(fullMs - 20000)
+
+    await timersAfter.fireLatest()
+    const view = await after.view("ROOM06", "a")
+    expect(view?.phase).toBe("PHASE_VOTING")
+  })
+
+  it("fires immediately on rearm when the turn's time had already run out", async () => {
+    const kv = createMemoryKeyValue()
+    const history = createMemoryHistory()
+    let clock = 2_000_000
+    const seats = ["a", "b", "c", "d", "e"].map((id) => ({ userId: id, username: id.toUpperCase() }))
+
+    const timersBefore = manualTimers()
+    const before = createGameService({ kv, history, random: createSeededRandom(9), now: () => new Date(clock), timers: timersBefore })
+    await before.start("ROOM07", seats, "a", "MODE_ONLINE", true)
+
+    clock += (PHASE_TIMERS_MS["PHASE_NOMINATION"] as number) + 5000
+    const timersAfter = manualTimers()
+    const after = createGameService({ kv, history, random: createSeededRandom(9), now: () => new Date(clock), timers: timersAfter })
+    await after.rearm("ROOM07")
+
+    expect(timersAfter.pending[0]?.ms).toBe(0)
+  })
+})

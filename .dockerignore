@@ -1,0 +1,13 @@
+node_modules
+.pnpm-store
+**/node_modules
+**/.expo
+**/.expo-shared
+**/dist
+.git
+.localdb
+apps/server/.localdb
+apps/mobile/.env
+apps/mobile/.env.local
+.env
+.env.local

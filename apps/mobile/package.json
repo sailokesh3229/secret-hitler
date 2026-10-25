@@ -4,9 +4,9 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start",
-    "android": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --android",
-    "ios": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --ios",
+    "start": "node scripts/syncLanIp.mjs && cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start",
+    "android": "node scripts/syncLanIp.mjs && cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --android",
+    "ios": "node scripts/syncLanIp.mjs && cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --ios",
     "web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

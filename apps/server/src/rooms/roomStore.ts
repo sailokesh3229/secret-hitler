@@ -25,6 +25,7 @@ export interface RoomStore {
   set(room: Room): void
   delete(code: string): void
   hasCode(code: string): boolean
+  listStartedCodes(): string[]
 }
 
 export function createMemoryRoomStore(): RoomStore {
@@ -38,5 +39,6 @@ export function createMemoryRoomStore(): RoomStore {
       rooms.delete(code)
     },
     hasCode: (code) => rooms.has(code),
+    listStartedCodes: () => [...rooms.values()].filter((room) => room.status === "STARTED").map((room) => room.code),
   }
 }

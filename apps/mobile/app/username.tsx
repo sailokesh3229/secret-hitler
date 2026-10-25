@@ -14,12 +14,14 @@ import { api, apiEnabled, ApiError, DEV_LOGIN, setSessionToken, setSessionUserna
 import { usernameProblem } from "../src/lib/validation.js"
 
 const CHECK_DEBOUNCE_MS = 400
+type Availability = "idle" | "checking" | "available" | "taken" | "error"
 
 export default function UsernameScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{ state?: string }>()
   const [name, setName] = useState("")
   const [checkedName, setCheckedName] = useState("")
+  const [availability, setAvailability] = useState<Availability>("idle")
   const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,10 +29,29 @@ export default function UsernameScreen() {
     return () => clearTimeout(timer)
   }, [name])
 
+  useEffect(() => {
+    if (checkedName.length === 0 || usernameProblem(checkedName) !== null) {
+      setAvailability("idle")
+      return
+    }
+    let active = true
+    setAvailability("checking")
+    const check = apiEnabled() ? api.checkUsername(checkedName).then((result) => result.available) : Promise.resolve(!isUsernameTaken(checkedName))
+    check
+      .then((isAvailable) => {
+        if (active) setAvailability(isAvailable ? "available" : "taken")
+      })
+      .catch(() => {
+        if (active) setAvailability("error")
+      })
+    return () => {
+      active = false
+    }
+  }, [checkedName])
+
   const problem = usernameProblem(name)
-  const isChecking = name !== checkedName
-  const taken = problem === null && !isChecking && isUsernameTaken(name)
-  const available = problem === null && !isChecking && !taken
+  const isPending = name !== checkedName || availability === "checking" || availability === "idle"
+  const available = problem === null && !isPending && availability === "available"
   const problemText =
     problem === "TOO_SHORT"
       ? screenCopy.usernameTooShort
@@ -38,9 +59,11 @@ export default function UsernameScreen() {
         ? screenCopy.usernameTooLong
         : problem === "BAD_CHARACTERS"
           ? screenCopy.usernameBadCharacters
-          : taken
+          : !isPending && availability === "taken"
             ? screenCopy.usernameTaken(name)
-            : undefined
+            : !isPending && availability === "error"
+              ? screenCopy.genericError
+              : undefined
   const status = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : "ready"
 
   async function save() {
@@ -74,7 +97,7 @@ export default function UsernameScreen() {
         maxLength={16}
         errorText={problemText}
       />
-      <Text style={styles.rules}>{isChecking && name.length > 0 ? screenCopy.usernameChecking : available ? screenCopy.usernameAvailable(name) : screenCopy.usernameRules}</Text>
+      <Text style={styles.rules}>{isPending && name.length > 0 ? screenCopy.usernameChecking : available ? screenCopy.usernameAvailable(name) : screenCopy.usernameRules}</Text>
       {serverError && <Text style={styles.rules}>{serverError}</Text>}
       <Button label={screenCopy.saveUsername} disabled={!available} onPress={() => void save()} />
     </ScreenFrame>

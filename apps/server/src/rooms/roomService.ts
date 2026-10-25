@@ -227,6 +227,10 @@ export function createRoomService(deps: RoomServiceDeps) {
       return commit(room)
     },
 
+    startedCodes(): string[] {
+      return store.listStartedCodes()
+    },
+
     start(host: UserRef, rawCode: string): RoomView {
       const room = requireRoom(rawCode)
       requireHost(room, host.id)

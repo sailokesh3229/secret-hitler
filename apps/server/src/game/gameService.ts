@@ -159,7 +159,12 @@ export function createGameService(deps: GameServiceDeps) {
     const ms = PHASE_TIMERS_MS[record.state.phase]
     if (ms === undefined) return
     timerKey.set(roomCode, key)
-    cancelTimer.set(roomCode, timers.schedule(() => void expire(roomCode, key), ms))
+    /* Derived from when the turn actually started, not from "now": a fresh
+       turn gets the full duration, and re-arming after a restart (rearm())
+       schedules only whatever time was left, so a stalled timer catches up
+       immediately instead of granting a brand new full-length timer. */
+    const remaining = Math.max(0, record.turnStartedAt + ms - deps.now().getTime())
+    cancelTimer.set(roomCode, timers.schedule(() => void expire(roomCode, key), remaining))
   }
 
   async function expire(roomCode: string, key: string): Promise<void> {
@@ -323,6 +328,14 @@ export function createGameService(deps: GameServiceDeps) {
 
     async summary(roomCode: string): Promise<GameRecord | null> {
       return load(roomCode)
+    },
+
+    /* Re-arms a room's turn timer after a server restart (the in-memory
+       schedule is gone, but the saved turnStartedAt is not). Call once per
+       started room right after the server comes up. */
+    async rearm(roomCode: string): Promise<void> {
+      const record = await load(roomCode)
+      if (record) scheduleFor(record)
     },
   }
 }
