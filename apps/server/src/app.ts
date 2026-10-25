@@ -71,6 +71,7 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
     return deps.verifier.verify(token)
   }
 
+  app.get("/", async () => ({ status: "ok", service: "secret-hitler-server" }))
   app.get("/health", async () => ({ status: "ok" }))
 
   app.get<{ Params: { username: string } }>("/usernames/:username/availability", async (request, reply) => {

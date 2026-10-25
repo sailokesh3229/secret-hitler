@@ -112,3 +112,11 @@ describe("browser access (web deployment)", () => {
     expect(response.headers["access-control-allow-origin"]).toBe("http://example.com")
   })
 })
+
+describe("root path (health probes that ignore the configured path)", () => {
+  it("answers 200 on a bare GET / instead of 404ing", async () => {
+    const app = newApp()
+    const response = await app.inject({ method: "GET", url: "/" })
+    expect(response.statusCode).toBe(200)
+  })
+})
