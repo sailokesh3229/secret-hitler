@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.1",
     "@game/engine": "workspace:*",
     "@game/protocol": "workspace:*",
     "@prisma/client": "^6",

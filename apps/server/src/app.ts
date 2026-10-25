@@ -2,6 +2,7 @@
    and creating the account's username after Firebase login. Every route
    that acts on a player verifies the ID token first (CLAUDE.md rule 1). */
 import Fastify from "fastify"
+import cors from "@fastify/cors"
 import type { HistoryStore } from "./game/history.js"
 import type { FastifyReply } from "fastify"
 import { roomSettingsSchema, usernameProblem } from "@game/protocol"
@@ -49,6 +50,7 @@ function bearerToken(header: string | undefined): string | null {
 
 export function buildApp(deps: AppDeps, options: AppOptions = {}) {
   const app = Fastify({ logger: options.logger ?? false })
+  void app.register(cors, { origin: true })
   const windows = new Map<string, { start: number; count: number }>()
   app.addHook("onRequest", async (request, reply) => {
     const now = Date.now()

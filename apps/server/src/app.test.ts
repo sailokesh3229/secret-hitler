@@ -89,3 +89,26 @@ describe("S5 choose username, signed in with Firebase (Step 9)", () => {
     expect(response.json()).toEqual({ code: "NO_USERNAME" })
   })
 })
+
+describe("browser access (web deployment)", () => {
+  it("answers a CORS preflight for a cross-origin browser request instead of 404ing it", async () => {
+    const app = newApp()
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/usernames/someone/availability",
+      headers: {
+        origin: "http://example.com",
+        "access-control-request-method": "GET",
+      },
+    })
+    expect(response.statusCode).toBeLessThan(300)
+    expect(response.headers["access-control-allow-origin"]).toBe("http://example.com")
+  })
+
+  it("echoes the request origin on a normal cross-origin GET", async () => {
+    const app = newApp()
+    const response = await app.inject({ method: "GET", url: "/usernames/someone/availability", headers: { origin: "http://example.com" } })
+    expect(response.statusCode).toBe(200)
+    expect(response.headers["access-control-allow-origin"]).toBe("http://example.com")
+  })
+})
