@@ -2,7 +2,7 @@
    6-character Room ID (no look-alike characters, see mockServer.ts). */
 import { useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
-import { Share, StyleSheet, Switch, Text, View } from "react-native"
+import { StyleSheet, Switch, Text, View } from "react-native"
 import { colors, fontFamily, fontSize, radii, screenCopy, spacing } from "@game/theme"
 import { Button } from "../src/components/Button.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
@@ -12,6 +12,7 @@ import { TextField } from "../src/components/TextField.js"
 import { createMockRoom, type MockRoom, type TableMode } from "../src/lib/mockServer.js"
 import { api, mockAllowed, serverConfigured } from "../src/lib/api.js"
 import { passwordProblem } from "../src/lib/validation.js"
+import { shareInvite } from "../src/lib/invite.js"
 
 const MODE_OPTIONS: { value: TableMode; label: string }[] = [
   { value: "MODE_IN_PERSON", label: screenCopy.inPerson },
@@ -27,6 +28,17 @@ export default function CreateRoomScreen() {
   const [chat, setChat] = useState(true)
   const [room, setRoom] = useState<MockRoom | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+
+  async function shareRoom(roomId: string) {
+    setShareStatus(null)
+    try {
+      const result = await shareInvite(roomId)
+      if (result === "copied") setShareStatus(screenCopy.shareCopied)
+    } catch {
+      setShareStatus(screenCopy.shareFailed)
+    }
+  }
 
   async function createRoomAction() {
     if (!serverConfigured()) {
@@ -58,7 +70,8 @@ export default function CreateRoomScreen() {
           <Text style={styles.id}>{room.id}</Text>
           <Text style={styles.hint}>{screenCopy.roomIdShareHint}</Text>
         </View>
-        <Button label={screenCopy.shareInvite} variant="secondary" onPress={() => void Share.share({ message: screenCopy.shareMessage(room.id) })} />
+        {shareStatus && <Toast text={shareStatus} tone={shareStatus === screenCopy.shareCopied ? "success" : "danger"} />}
+        <Button label={screenCopy.shareInvite} variant="secondary" onPress={() => void shareRoom(room.id)} />
         <Button label={screenCopy.goToLobby} onPress={() => router.replace({ pathname: "/lobby", params: { roomId: room.id, count: String(room.playerCount), role: "host" } })} />
       </ScreenFrame>
     )

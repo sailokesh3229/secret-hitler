@@ -30,6 +30,14 @@ export default function CodeScreen() {
     return () => clearTimeout(timer)
   }, [secondsLeft])
 
+  if (!__DEV__) {
+    return (
+      <ScreenFrame title={screenCopy.codeTitle} onBack={() => router.replace("/login")}>
+        <Text style={styles.hint}>{screenCopy.codeNotAvailable}</Text>
+      </ScreenFrame>
+    )
+  }
+
   return (
     <ScreenFrame title={screenCopy.codeTitle} status={status} onBack={() => router.back()}>
       <Text style={styles.hint}>{screenCopy.codeSent(contact)}</Text>

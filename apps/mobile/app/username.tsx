@@ -10,7 +10,7 @@ import { Button } from "../src/components/Button.js"
 import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { TextField } from "../src/components/TextField.js"
 import { isUsernameTaken } from "../src/lib/mockServer.js"
-import { api, apiEnabled, ApiError, DEV_LOGIN, setSessionToken, setSessionUsername } from "../src/lib/api.js"
+import { api, apiEnabled, ApiError, setSessionUsername } from "../src/lib/api.js"
 import { usernameProblem } from "../src/lib/validation.js"
 
 const CHECK_DEBOUNCE_MS = 400
@@ -68,7 +68,6 @@ export default function UsernameScreen() {
 
   async function save() {
     if (apiEnabled()) {
-      if (DEV_LOGIN) setSessionToken("dev:" + name)
       try {
         await api.saveUsername(name)
       } catch (error) {

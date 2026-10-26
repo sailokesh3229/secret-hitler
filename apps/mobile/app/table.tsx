@@ -22,9 +22,11 @@ import type { PlayerCount, PlayerId, Vote } from "@game/engine"
 import { actionLabels, colors, fontFamily, fontSize, gameCopy, HAPTIC_SELECTION, radii, spacing, voteLabels, type BadgeKind } from "@game/theme"
 import { ActionPanel } from "../src/components/ActionPanel.js"
 import { Ballot } from "../src/components/Ballot.js"
+import { BrandSeal } from "../src/components/BrandSeal.js"
 import { Button } from "../src/components/Button.js"
 import { ElectionTracker } from "../src/components/ElectionTracker.js"
 import { FascistTrack } from "../src/components/FascistTrack.js"
+import { GameBackdrop } from "../src/components/GameBackdrop.js"
 import { LiberalTrack } from "../src/components/LiberalTrack.js"
 import { RevealedBallots } from "../src/components/RevealedBallots.js"
 import { Seat } from "../src/components/Seat.js"
@@ -41,7 +43,8 @@ const VOTE_OPTIONS: Vote[] = [VOTE_YES, VOTE_NO]
 const SEAT_WIDTH = 70
 const SEAT_HEIGHT = 104
 const CLOSE_VOTING_MS = 120000
-const TABLE_MAX_WIDTH = 360
+const TABLE_MAX_WIDTH_MOBILE = 360
+const TABLE_MAX_WIDTH_DESKTOP = 660
 
 export default function TableScreen() {
   const router = useRouter()
@@ -60,6 +63,7 @@ export default function TableScreen() {
   const setViewer = useGameStore((store) => store.setViewer)
   const clearError = useGameStore((store) => store.clearError)
   const { width } = useWindowDimensions()
+  const desktop = width >= 820
   const [ballot, setBallot] = useState<Vote | null>(null)
   const [canCloseVoting, setCanCloseVoting] = useState(testTable)
 
@@ -101,8 +105,9 @@ export default function TableScreen() {
   const name = (id: PlayerId | null): string => (id === null ? "" : names[id] ?? id)
   const isAlive = alive.includes(me)
   const hasVoted = view.votedPlayerIds.includes(me)
-  const ovalWidth = Math.min(width - spacing.lg * 2, TABLE_MAX_WIDTH)
-  const spots = ovalSeatSpots(seatIds.length, ovalWidth, TABLE_HEIGHT, SEAT_WIDTH, SEAT_HEIGHT)
+  const ovalWidth = Math.min(width - spacing.lg * 2, desktop ? TABLE_MAX_WIDTH_DESKTOP : TABLE_MAX_WIDTH_MOBILE)
+  const ovalHeight = desktop ? 490 : TABLE_HEIGHT
+  const spots = ovalSeatSpots(seatIds.length, ovalWidth, ovalHeight, SEAT_WIDTH, SEAT_HEIGHT)
   const playerCount = seatIds.length as PlayerCount
 
   function badgesFor(id: PlayerId): BadgeKind[] {
@@ -209,7 +214,8 @@ export default function TableScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <GameBackdrop subtle />
+      <ScrollView contentContainerStyle={[styles.content, desktop && styles.contentDesktop]}>
         {testTable && (
           <View style={styles.testTable}>
             <Text style={styles.testTableText}>{gameCopy.testTableBanner}</Text>
@@ -231,19 +237,26 @@ export default function TableScreen() {
 
         {connection === "offline" && <Toast text={gameCopy.reconnecting} tone="danger" />}
 
-        <View style={styles.boards}>
-          <Text style={styles.boardLabel}>{gameCopy.liberalTrack}</Text>
-          <LiberalTrack enactedCount={view.liberalPoliciesEnacted} />
-          <Text style={styles.boardLabel}>{gameCopy.fascistTrack}</Text>
-          <FascistTrack playerCount={playerCount} enactedCount={view.fascistPoliciesEnacted} />
-          <View style={styles.trackerRow}>
-            <ElectionTracker tracker={view.electionTracker} />
-            <Text style={styles.counts}>{gameCopy.failedElections}</Text>
+        <View style={[styles.boards, desktop && styles.boardsDesktop]}>
+          <View style={styles.trackPanel}>
+            <Text style={styles.boardLabel}>{gameCopy.liberalTrack}</Text>
+            <LiberalTrack enactedCount={view.liberalPoliciesEnacted} />
           </View>
-          <Text style={styles.counts}>{gameCopy.drawAndDiscard(view.drawPileCount, view.discardPileCount)}</Text>
+          <View style={styles.trackPanel}>
+            <Text style={styles.boardLabel}>{gameCopy.fascistTrack}</Text>
+            <FascistTrack playerCount={playerCount} enactedCount={view.fascistPoliciesEnacted} />
+          </View>
+          <View style={styles.metaPanel}>
+            <View style={styles.trackerRow}>
+              <ElectionTracker tracker={view.electionTracker} />
+              <Text style={styles.counts}>{gameCopy.failedElections}</Text>
+            </View>
+            <Text style={styles.counts}>{gameCopy.drawAndDiscard(view.drawPileCount, view.discardPileCount)}</Text>
+          </View>
         </View>
 
-        <View style={[styles.oval, { width: ovalWidth, height: TABLE_HEIGHT }]}>
+        <View style={[styles.oval, { width: ovalWidth, height: ovalHeight }]}>
+          <View style={styles.ovalMat}><BrandSeal size={desktop ? 90 : 70} /></View>
           {seatIds.map((id, index) => {
             const spot = spots[index]
             if (!spot) return null
@@ -284,9 +297,9 @@ export default function TableScreen() {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <Button label={gameCopy.log} variant="secondary" onPress={() => router.push("/log")} />
-        {(testTable || roomMode === "MODE_ONLINE") && <Button label={gameCopy.chatTitle} variant="secondary" onPress={() => router.push("/chat")} />}
-        <Button label={gameCopy.myRole} variant="secondary" onPress={() => router.push("/role")} />
+        <Button label={gameCopy.log} variant="secondary" compact onPress={() => router.push("/log")} />
+        {(testTable || roomMode === "MODE_ONLINE") && <Button label={gameCopy.chatTitle} variant="secondary" compact onPress={() => router.push("/chat")} />}
+        <Button label={gameCopy.myRole} variant="secondary" compact onPress={() => router.push("/role")} />
       </View>
     </View>
   )
@@ -301,7 +314,11 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing.xl,
+    width: "100%",
+    maxWidth: 1120,
+    alignSelf: "center",
   },
+  contentDesktop: { padding: spacing.xxl },
   fallback: {
     flex: 1,
     padding: spacing.xl,
@@ -348,6 +365,25 @@ const styles = StyleSheet.create({
   boards: {
     gap: spacing.sm,
   },
+  boardsDesktop: { flexDirection: "row", alignItems: "stretch" },
+  trackPanel: {
+    flex: 1,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.control,
+    backgroundColor: colors.glass,
+  },
+  metaPanel: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.control,
+    backgroundColor: colors.glass,
+    justifyContent: "center",
+  },
   boardLabel: {
     fontFamily: fontFamily.interfaceSemiBold,
     fontSize: fontSize.sm,
@@ -365,6 +401,19 @@ const styles = StyleSheet.create({
   },
   oval: {
     alignSelf: "center",
+  },
+  ovalMat: {
+    position: "absolute",
+    left: SEAT_WIDTH / 2,
+    right: SEAT_WIDTH / 2,
+    top: SEAT_HEIGHT / 2,
+    bottom: SEAT_HEIGHT / 2,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+    alignItems: "center",
+    justifyContent: "center",
   },
   seatSlot: {
     position: "absolute",
@@ -410,8 +459,12 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.lg,
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: spacing.sm,
+    padding: spacing.sm,
     backgroundColor: colors.surfaceRecessed,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 })

@@ -3,7 +3,7 @@
    screen needs right now. */
 import type { ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
-import { colors, spacing } from "@game/theme"
+import { colors, radii, spacing } from "@game/theme"
 
 export interface ActionPanelProps {
   children: ReactNode
@@ -15,9 +15,12 @@ export function ActionPanel({ children }: ActionPanelProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: spacing.sm,
     padding: spacing.lg,
-    backgroundColor: colors.surfaceRecessed,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radii.control,
   },
 })

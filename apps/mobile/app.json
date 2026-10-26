@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Secret Hitler Mobile",
+    "icon": "./public/logo512.png",
     "slug": "secret-hitler-mobile",
     "scheme": "secrethitler",
     "version": "0.0.0",
@@ -20,7 +21,8 @@
     "android": {},
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./public/logo192.png"
     }
   }
 }

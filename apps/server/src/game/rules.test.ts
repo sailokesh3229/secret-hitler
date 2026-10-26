@@ -48,7 +48,7 @@ function newGame(timersOn: boolean, mode = "MODE_ONLINE") {
     kv: createMemoryKeyValue(),
     history: createMemoryHistory(),
     random,
-    now: () => new Date(),
+    now: () => new Date("2026-10-26T00:00:00.000Z"),
     timers,
   })
   const seats = ["a", "b", "c", "d", "e"].map((id) => ({ userId: id, username: id.toUpperCase() }))

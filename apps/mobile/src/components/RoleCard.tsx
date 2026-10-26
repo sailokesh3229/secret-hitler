@@ -23,8 +23,10 @@ export function RoleCard({ role }: RoleCardProps) {
   const team = partyMembership(role)
   return (
     <View style={styles.card}>
-      <Emblem team={team} size={48} />
+      <View style={styles.inset} />
+      <Emblem team={team} size={56} />
       <Text style={styles.teamHeading}>{teamNames[team]}</Text>
+      <View style={styles.rule} />
       <Text style={styles.roleLabel}>{roleNames[role]}</Text>
     </View>
   )
@@ -32,15 +34,23 @@ export function RoleCard({ role }: RoleCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    width: 220,
-    height: 280,
+    width: 236,
+    height: 300,
     borderRadius: radii.control,
     backgroundColor: colors.paper,
+    borderWidth: 2,
+    borderColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.md,
     padding: spacing.lg,
+    shadowColor: colors.background,
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
   },
+  inset: { position: "absolute", top: 9, right: 9, bottom: 9, left: 9, borderWidth: 1, borderColor: colors.borderOnPaper, borderRadius: radii.tile },
+  rule: { width: 54, height: 1, backgroundColor: colors.borderOnPaper },
   teamHeading: {
     fontFamily: fontFamily.documentBold,
     fontSize: fontSize.xxl,

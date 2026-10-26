@@ -4,7 +4,8 @@
    are kept in memory. */
 import { randomInt } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
-import { createDevVerifier, createFirebaseVerifier, rejectingVerifier, type TokenVerifier } from "./auth/tokenVerifier.js"
+import { createFirebaseVerifier, rejectingVerifier, type TokenVerifier } from "./auth/tokenVerifier.js"
+import { createGuestAuth } from "./auth/guestTokens.js"
 import { composeServer, type ServerDeps } from "./server.js"
 import { argon2Hasher } from "./rooms/passwords.js"
 import { createMemoryRoomStore } from "./rooms/roomStore.js"
@@ -30,10 +31,16 @@ export function buildServer(verifier: TokenVerifier = rejectingVerifier) {
   return composeServer(baseDeps(verifier)).app
 }
 
-function chooseVerifier(env: NodeJS.ProcessEnv): TokenVerifier {
-  if (env.FIREBASE_PROJECT_ID) return createFirebaseVerifier(env)
-  if (env.ALLOW_DEV_LOGIN === "true") return createDevVerifier()
-  return rejectingVerifier
+function chooseAuth(env: NodeJS.ProcessEnv): { verifier: TokenVerifier; issueGuestToken?: () => string } {
+  if (env.FIREBASE_PROJECT_ID) return { verifier: createFirebaseVerifier(env) }
+  /* A signed, server-created identity works for the temporary course demo.
+     ALLOW_DEV_LOGIN remains accepted as a legacy configuration flag, but it
+     no longer enables client-chosen dev:<name> tokens on the public server. */
+  if (env.ALLOW_GUEST_LOGIN === "true" || env.ALLOW_DEV_LOGIN === "true") {
+    const secret = env.GUEST_TOKEN_SECRET ? Buffer.from(env.GUEST_TOKEN_SECRET, "utf8") : undefined
+    return createGuestAuth(secret)
+  }
+  return { verifier: rejectingVerifier }
 }
 
 const isMain = process.argv[1] && process.argv[1].endsWith("index.ts")
@@ -43,7 +50,8 @@ if (isMain) {
   const host = process.env.HOST ?? "localhost"
   const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null
   const kv: KeyValueClient = redis ?? createMemoryKeyValue()
-  const deps: ServerDeps = { ...baseDeps(chooseVerifier(process.env)), kv }
+  const auth = chooseAuth(process.env)
+  const deps: ServerDeps = { ...baseDeps(auth.verifier), issueGuestToken: auth.issueGuestToken, kv }
   /* Postgres is optional: without DATABASE_URL the server runs fully in
      memory (same fallback kv already has), so a quick deploy needs no
      database at all. Set DATABASE_URL to persist accounts and history. */

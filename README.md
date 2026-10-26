@@ -1,7 +1,8 @@
-# Secret Hitler Mobile
+# Secret Hitler
 
-Mobile multiplayer social-deduction game (Secret Hitler rules) for 5-10
-human players, Android + iOS. See CLAUDE.md for working rules, docs/spec.md
+# Multiplayer social-deduction game (Secret Hitler rules) for 5-10
+human players. One Expo codebase targets Android, iOS, web and installable
+desktop web. See CLAUDE.md for working rules, docs/spec.md
 for what to build, and docs/plan.md for build order.
 
 ## Workspace layout
@@ -17,10 +18,43 @@ for what to build, and docs/plan.md for build order.
 
 1. Copy .env.example to .env and fill in values as they become needed.
 2. pnpm install
-3. pnpm db:up (starts Postgres + Redis via Docker Compose)
-4. pnpm dev:server - starts the API and sockets
-5. pnpm dev:mobile - starts the Expo dev server (scan the QR code with
-   Expo Go on your phone)
+3. `pnpm dev:server` starts the API and sockets with in-memory storage if
+   `DATABASE_URL` and `REDIS_URL` are absent. Use `pnpm db:up` only when you
+   want PostgreSQL and Redis locally.
+4. `pnpm dev:mobile` starts Expo; scan its QR code with Expo Go.
+5. For a web export, run `pnpm --filter @game/mobile exec expo export --platform web`
+   and host `apps/mobile/dist` with a single-page rewrite to `/index.html`.
+
+## Authentication
+
+Email/password sign-up and log-in use Firebase Authentication. Enable the
+Email/Password provider in your own Firebase project, then configure the
+`EXPO_PUBLIC_FIREBASE_*` values in the frontend build and the server's
+`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`
+from a service account. Keep the service account values private. The server
+verifies every Firebase ID token; the app refreshes it for HTTP and sockets.
+
+For a temporary coursework demo without Firebase, set `ALLOW_GUEST_LOGIN=true`
+on the server and `EXPO_PUBLIC_DEV_LOGIN=true` for the frontend build. Each
+guest receives a server-signed token; `dev:<name>` tokens are rejected by the
+public entry point. Guest accounts and game history disappear on server restart
+when no persistent database is configured. Set a 32+ byte
+`GUEST_TOKEN_SECRET` if guest tokens must survive a restart with persistent
+storage. Guest mode is not durable account sign-in.
+
+## Platforms and hosting
+
+The web export works in a browser and can be installed as a desktop PWA.
+Android and iOS use the same screens and game API; Expo bundling has been
+verified for both. Distributable native binaries still require EAS build
+credentials and device testing. Set `EXPO_PUBLIC_WEB_URL` in native builds
+to make room invites open the public web game when the native deep link is
+unavailable. The PWA needs a live connection to play; it does not cache
+private game state for offline use.
+
+The backend can run on a free Render web service for a course demonstration.
+An Azure deployment requires an active subscription with verified remaining
+credit/free-tier eligibility. Do not enable a paid tier solely for this demo.
 
 ## Checks
 

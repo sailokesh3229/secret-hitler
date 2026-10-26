@@ -1,24 +1,42 @@
-/* S3 Sign up / Log in. Four ways in (spec S3, Google and Apple listed as
-   defaults). All of them are fake until plan.md Step 9 wires Firebase:
-   phone and email go to the one-time code, Google and Apple go straight
-   to choosing a username. */
-import { useRouter } from "expo-router"
+/* S3: only offer authentication that actually works in this build. */
+import { useState } from "react"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { screenCopy } from "@game/theme"
 import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { Button } from "../src/components/Button.js"
 import { StyleSheet, Text } from "react-native"
 import { colors, fontFamily, fontSize } from "@game/theme"
 import { firebaseConfigured } from "../src/lib/firebase.js"
+import { apiEnabled, DEV_LOGIN } from "../src/lib/api.js"
+import { startGuestSession } from "../src/lib/guestSession.js"
+import { Toast } from "../src/components/Toast.js"
 
 export default function LoginScreen() {
   const router = useRouter()
+  const params = useLocalSearchParams<{ mode?: string }>()
+  const signUp = params.mode === "signup"
+  const firebase = firebaseConfigured()
+  const guest = !firebase && DEV_LOGIN && apiEnabled()
+  const [guestError, setGuestError] = useState(false)
+  const [busy, setBusy] = useState(false)
+  async function beginGuest() {
+    setBusy(true)
+    setGuestError(false)
+    try {
+      await startGuestSession()
+      router.push("/username")
+    } catch {
+      setGuestError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
-    <ScreenFrame title={screenCopy.loginTitle} onBack={() => router.back()}>
-      <Text style={styles.hint}>{screenCopy.loginHint}</Text>
-      <Button label={screenCopy.continueWithPhone} onPress={() => router.push({ pathname: "/code", params: { method: "phone" } })} />
-      <Button label={screenCopy.continueWithEmail} variant="secondary" onPress={() => router.push(firebaseConfigured() ? "/email" : { pathname: "/code", params: { method: "email" } })} />
-      <Button label={screenCopy.continueWithGoogle} variant="secondary" onPress={() => router.push("/username")} />
-      <Button label={screenCopy.continueWithApple} variant="secondary" onPress={() => router.push("/username")} />
+    <ScreenFrame title={signUp ? screenCopy.signUp : screenCopy.logIn} onBack={() => router.back()}>
+      <Text style={styles.hint}>{firebase ? screenCopy.loginHint : guest ? screenCopy.guestLoginHint : screenCopy.authNotConfigured}</Text>
+      {firebase && <Button label={screenCopy.continueWithEmail} onPress={() => router.push({ pathname: "/email", params: { mode: signUp ? "signup" : "login" } })} />}
+      {guestError && <Toast text={screenCopy.offline} tone="danger" />}
+      {guest && <Button label={screenCopy.continueAsGuest} disabled={busy} onPress={() => void beginGuest()} />}
     </ScreenFrame>
   )
 }

@@ -10,7 +10,8 @@ import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { Sheet } from "../src/components/Sheet.js"
 import { Toast } from "../src/components/Toast.js"
 import { useGameStore } from "../src/game/store.js"
-import { apiEnabled, currentUsername, gamesApi, setSessionToken, setSessionUsername } from "../src/lib/api.js"
+import { apiEnabled, currentUsername, gamesApi } from "../src/lib/api.js"
+import { signOutAccount } from "../src/lib/firebase.js"
 import { getSettings, updateSettings, type Settings } from "../src/lib/settings.js"
 
 export default function ProfileScreen() {
@@ -25,10 +26,9 @@ export default function ProfileScreen() {
     void updateSettings({ [key]: value })
   }
 
-  function signOut() {
+  async function signOut() {
     disconnectRemote()
-    setSessionToken(null)
-    setSessionUsername("")
+    await signOutAccount()
     router.replace("/welcome")
   }
 
@@ -42,7 +42,7 @@ export default function ProfileScreen() {
         return
       }
     }
-    signOut()
+    await signOut()
   }
 
   const row = (label: string, value: boolean, key: keyof Settings) => (
@@ -65,7 +65,7 @@ export default function ProfileScreen() {
 
       <Button label={moreCopy.profileHowToPlay} variant="secondary" onPress={() => router.push("/how-to-play")} />
       <Button label={moreCopy.profileCredits} variant="secondary" onPress={() => router.push("/credits")} />
-      <Button label={moreCopy.profileSignOut} variant="secondary" onPress={signOut} />
+      <Button label={moreCopy.profileSignOut} variant="secondary" onPress={() => void signOut()} />
 
       {failed && <Toast text={moreCopy.profileDeleteFailed} tone="danger" />}
       {confirming ? (

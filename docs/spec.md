@@ -324,14 +324,14 @@ Fill in the "Your choice" column. **Anything left blank uses the default.** Clau
 
 | Decision | Default ("The Card Table") | Your choice |
 |---|---|---|
-| 3 mood words | Tense, tactile, period | |
-| Apps/games you like the look of | — | |
-| Background | Green baize `#1E3A2F` | Walnut `#1C1714` (Review 1: no green) |
-| Recessed surfaces (sheets, drawers) | `#15291F` | `#120E0C` (matches walnut background) |
-| Accent (placards, main buttons) | Brass `#C29A4B` | |
-| Card / tile paper | `#EDE6D3`, ink `#26323B` | |
-| Liberal colour + symbol | Blue `#3A6EA5`, round emblem | |
-| Fascist colour + symbol | Oxblood `#9B2F24`, angular emblem | |
+| 3 mood words | Tense, tactile, period | Premium, cinematic, social (Review 2) |
+| Apps/games you like the look of | — | Owner requested references from online games; use original art and a modern game lobby, no copied assets |
+| Background | Green baize `#1E3A2F` | Deep charcoal `#101019`, original dossier tabletop art (Review 2; keeps dark mood) |
+| Recessed surfaces (sheets, drawers) | `#15291F` | `#151520` |
+| Accent (placards, main buttons) | Brass `#C29A4B` | Copper `#E4B982`; ivory primary button with dark text, glass secondary |
+| Card / tile paper | `#EDE6D3`, ink `#26323B` | `#F2E9DB`, ink `#1D1B25` |
+| Liberal colour + symbol | Blue `#3A6EA5`, round emblem | Blue `#326AA9`, existing round emblem |
+| Fascist colour + symbol | Oxblood `#9B2F24`, angular emblem | Crimson `#A8374B`, existing angular emblem |
 | Interface font | Jost | |
 | Document font (role card, dossier, log) | Libre Caslon Text | |
 | Corners | Tiles 10 pt, controls 14 pt | |
@@ -454,3 +454,5 @@ The rulebook states CC BY-NC-SA 4.0: credit Mike Boxleiter, Tommy Maranges and M
 | D14 | Vote ballots labelled Yes/No in English, not Ja/Nein (spec Sec 6, S12 still describe the rule by Ja/Nein for rulebook fidelity - the displayed copy is the English pair) | Decided (Review 1) |
 | D15 | Role card heading is always the Team (party membership), the specific role name is the small line underneath - applies to Liberal and Fascist too, not just Hitler, to keep every role card the same layout (CLAUDE.md rule 7) | Decided (Review 1) |
 | D16 | S5 "pick avatar" is replaced by "the app assigns an avatar, shown on S5 and never chosen by the player" (Review 1: avatars are assigned by the app). Interim until illustrated portraits exist. Owner to confirm | Decided (Review 1), follows D14/D15 |
+| D17 | Review 2: one responsive design on web, installable desktop web, Android and iOS. Original tabletop art, charcoal/copper/ivory palette, polished cards and controls; game text, roles, rules, and private information do not change. Respect reduced motion and no-tells. | Decided (owner request) |
+| D18 | Email/password account sign-in uses Firebase once configured. Until then, a clearly temporary demo guest uses a server-issued signed token; client-selected `dev:<name>` tokens are never accepted by the public server. | Decided (owner request) |

@@ -2,8 +2,9 @@
    loading / error / no-connection states every screen needs (spec Sec 4
    intro). Content is hidden while loading or offline. */
 import type { ReactNode } from "react"
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
-import { colors, fontFamily, fontSize, screenCopy, spacing } from "@game/theme"
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { colors, fontFamily, fontSize, radii, screenCopy, spacing } from "@game/theme"
+import { GameBackdrop } from "./GameBackdrop.js"
 import { Toast } from "./Toast.js"
 
 export type ScreenStatus = "ready" | "loading" | "error" | "offline"
@@ -13,18 +14,29 @@ export interface ScreenFrameProps {
   status?: ScreenStatus
   errorText?: string
   onBack?: () => void
+  variant?: "panel" | "open"
   children: ReactNode
 }
 
-export function ScreenFrame({ title, status = "ready", errorText, onBack, children }: ScreenFrameProps) {
+export function ScreenFrame({ title, status = "ready", errorText, onBack, variant = "panel", children }: ScreenFrameProps) {
+  const { width } = useWindowDimensions()
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.screen}>
+      <GameBackdrop subtle />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingHorizontal: width >= 720 ? spacing.xxl : spacing.md }]}
+        keyboardShouldPersistTaps="handled"
+      >
       {onBack && (
         <Pressable accessibilityRole="button" accessibilityLabel={screenCopy.back} onPress={onBack} style={styles.back}>
-          <Text style={styles.backLabel}>{screenCopy.back}</Text>
+          <Text style={styles.backLabel}>{"‹  "}{screenCopy.back}</Text>
         </Pressable>
       )}
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.heading}>
+        <View style={styles.headingRule} />
+        <Text style={styles.title}>{title}</Text>
+      </View>
       {status === "offline" && <Toast text={screenCopy.offline} tone="danger" />}
       {status === "error" && <Toast text={errorText ?? screenCopy.genericError} tone="danger" />}
       {status === "loading" && (
@@ -32,8 +44,9 @@ export function ScreenFrame({ title, status = "ready", errorText, onBack, childr
           <Text style={styles.loadingText}>{screenCopy.loading}</Text>
         </View>
       )}
-      {(status === "ready" || status === "error") && <View style={styles.body}>{children}</View>}
-    </ScrollView>
+      {(status === "ready" || status === "error") && <View style={[styles.body, variant === "panel" && styles.panel]}>{children}</View>}
+      </ScrollView>
+    </View>
   )
 }
 
@@ -42,11 +55,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  scroll: { flex: 1 },
   content: {
-    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 1000,
+    alignSelf: "center",
+    paddingTop: spacing.xl,
     gap: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
+  heading: {
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headingRule: { width: 48, height: 3, borderRadius: 2, backgroundColor: colors.accent },
   back: {
     minHeight: 44,
     justifyContent: "center",
@@ -61,6 +85,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.documentBold,
     fontSize: fontSize.xxl,
     color: colors.textOnDark,
+    letterSpacing: 0.3,
   },
   loading: {
     paddingVertical: spacing.xxl,
@@ -73,5 +98,16 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: spacing.lg,
+  },
+  panel: {
+    padding: spacing.lg,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.control,
+    shadowColor: colors.background,
+    shadowOpacity: 0.3,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 12 },
   },
 })

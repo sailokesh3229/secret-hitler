@@ -4,6 +4,7 @@
 import { StyleSheet, Text, View } from "react-native"
 import { colors, fontFamily, fontSize, radii, voteLabels } from "@game/theme"
 import type { VoteToken } from "@game/theme"
+import { BrandSeal } from "./BrandSeal.js"
 
 export interface BallotProps {
   vote?: VoteToken
@@ -11,7 +12,7 @@ export interface BallotProps {
 
 export function Ballot({ vote }: BallotProps) {
   if (vote === undefined) {
-    return <View style={[styles.base, styles.faceDown]} />
+    return <View style={[styles.base, styles.faceDown]}><BrandSeal size={32} /></View>
   }
   const isYes = vote === "VOTE_YES"
   return (
@@ -31,12 +32,12 @@ const styles = StyleSheet.create({
   },
   faceUp: {
     backgroundColor: colors.paper,
-    borderWidth: 3,
+    borderWidth: 2,
   },
   faceDown: {
     backgroundColor: colors.surfaceRaised,
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.accent,
   },
   label: {
     fontFamily: fontFamily.documentBold,

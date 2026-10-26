@@ -24,6 +24,8 @@ export const fontSize = {
   lg: 20,
   xl: 24,
   xxl: 32,
+  heroMobile: 42,
+  heroDesktop: 64,
 } as const
 
 export const fontWeight = {

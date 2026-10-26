@@ -5,17 +5,17 @@ import { radii } from "./radii.js"
 import { roleNames, teamNames, voteLabels } from "./strings.js"
 
 describe("spec Sec 9 defaults", () => {
-  it("background is the owner-chosen walnut tone, not the green baize default (Review 1)", () => {
-    expect(colors.background).toBe("#1C1714")
+  it("background remains a deep non-green tone in the premium theme", () => {
+    expect(colors.background).toBe("#101019")
   })
 
-  it("accent is the brass default", () => {
-    expect(colors.accent).toBe("#C29A4B")
+  it("accent is the new warm copper tone", () => {
+    expect(colors.accent).toBe("#E4B982")
   })
 
-  it("Liberal and Fascist use distinct, spec-default colours", () => {
-    expect(colors.liberal).toBe("#3A6EA5")
-    expect(colors.fascist).toBe("#9B2F24")
+  it("Liberal and Fascist use distinct colours that keep small labels legible", () => {
+    expect(colors.liberal).toBe("#326AA9")
+    expect(colors.fascist).toBe("#A8374B")
     expect(colors.liberal).not.toBe(colors.fascist)
   })
 

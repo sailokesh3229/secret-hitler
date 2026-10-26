@@ -4,7 +4,7 @@
    engine. */
 import { StyleSheet, Text, View } from "react-native"
 import { getLiberalBoardSlots } from "@game/engine"
-import { colors, fontFamily, fontSize, radii, spacing } from "@game/theme"
+import { boardMarkers, colors, fontFamily, fontSize, radii, spacing } from "@game/theme"
 
 export interface LiberalTrackProps {
   enactedCount: number
@@ -18,7 +18,8 @@ export function LiberalTrack({ enactedCount }: LiberalTrackProps) {
         const filled = slot.slot <= enactedCount
         return (
           <View key={slot.slot} style={[styles.pip, filled && styles.pipFilled]}>
-            {slot.winsGame && <Text style={styles.winLabel}>Win</Text>}
+            <View style={[styles.inset, filled && styles.insetFilled]} />
+            {slot.winsGame && <Text style={styles.winLabel}>{boardMarkers.win}</Text>}
           </View>
         )
       })}
@@ -29,20 +30,32 @@ export function LiberalTrack({ enactedCount }: LiberalTrackProps) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.xs,
+    width: "100%",
+    maxWidth: 450,
+    padding: spacing.sm,
+    borderRadius: radii.control,
+    borderWidth: 1,
+    borderColor: colors.liberalDark,
+    backgroundColor: colors.surfaceRecessed,
   },
   pip: {
-    width: 44,
-    height: 44,
+    flex: 1,
+    minWidth: 0,
+    height: 54,
     borderRadius: radii.tile,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.liberal,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.surfaceRaised,
+    overflow: "hidden",
   },
   pipFilled: {
     backgroundColor: colors.liberal,
   },
+  inset: { position: "absolute", top: 3, right: 3, bottom: 3, left: 3, borderWidth: 1, borderColor: colors.liberalDark, borderRadius: radii.tile },
+  insetFilled: { borderColor: colors.paper },
   winLabel: {
     fontFamily: fontFamily.interface,
     fontSize: fontSize.xs,

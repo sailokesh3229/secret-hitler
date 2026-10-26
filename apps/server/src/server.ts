@@ -17,6 +17,7 @@ import type { UserRepository } from "./users/userRepository.js"
 
 export interface ServerDeps {
   verifier: TokenVerifier
+  issueGuestToken?: (() => string) | undefined
   users: UserRepository
   store: RoomStore
   hasher: PasswordHasher
@@ -57,6 +58,7 @@ export function composeServer(deps: ServerDeps) {
   })
   const app = buildApp({
     verifier: deps.verifier,
+    issueGuestToken: deps.issueGuestToken,
     users: deps.users,
     rooms,
     history,

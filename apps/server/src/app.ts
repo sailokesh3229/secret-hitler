@@ -13,6 +13,7 @@ import { UsernameTakenError, type UserRepository } from "./users/userRepository.
 
 export interface AppDeps {
   verifier: TokenVerifier
+  issueGuestToken?: (() => string) | undefined
   users: UserRepository
   rooms: RoomService
   onRoomStarted?: (room: RoomView) => Promise<void>
@@ -73,6 +74,10 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
 
   app.get("/", async () => ({ status: "ok", service: "secret-hitler-server" }))
   app.get("/health", async () => ({ status: "ok" }))
+
+  if (deps.issueGuestToken) {
+    app.post("/auth/guest", async () => ({ token: deps.issueGuestToken!() }))
+  }
 
   app.get<{ Params: { username: string } }>("/usernames/:username/availability", async (request, reply) => {
     const problem = usernameProblem(request.params.username)

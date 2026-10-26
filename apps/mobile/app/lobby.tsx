@@ -6,14 +6,14 @@
    With a server configured (EXPO_PUBLIC_API_URL) the lobby shows the live
    room: the view comes from the server and updates over Socket.IO, and
    every action is sent to the server. Without one, the local mock keeps
-   the screen usable for design review. Start hands off to the local table
-   until Step 11 moves the game onto the server. */
+   the screen usable for design review. Live games run on the server. */
 import { useEffect, useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
-import { Share, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import type { PlayerCount } from "@game/engine"
 import { colors, fontFamily, fontSize, radii, screenCopy, spacing } from "@game/theme"
 import { Avatar } from "../src/components/Avatar.js"
+import { BrandSeal } from "../src/components/BrandSeal.js"
 import { Badge } from "../src/components/Badge.js"
 import { Button } from "../src/components/Button.js"
 import { FascistTrack } from "../src/components/FascistTrack.js"
@@ -22,6 +22,8 @@ import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js
 import { api, currentUsername, serverConfigured, subscribeToRoom, type RoomView } from "../src/lib/api.js"
 import { mockLobbyPlayers, type LobbyPlayer } from "../src/lib/mockServer.js"
 import { useGameStore } from "../src/game/store.js"
+import { shareInvite } from "../src/lib/invite.js"
+import { Toast } from "../src/components/Toast.js"
 
 const MIN_PLAYERS = 5
 const MAX_PLAYERS = 10
@@ -37,6 +39,8 @@ interface Row {
 
 export default function LobbyScreen() {
   const router = useRouter()
+  const { width } = useWindowDimensions()
+  const desktop = width >= 800
   const params = useLocalSearchParams<{ roomId?: string; count?: string; role?: string; state?: string }>()
   const isHost = params.role !== "player"
   const requestedCount = Number(params.count ?? "6")
@@ -51,6 +55,17 @@ export default function LobbyScreen() {
   const [serverView, setServerView] = useState<RoomView | null>(null)
   const [reordering, setReordering] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+
+  async function shareRoom() {
+    setShareStatus(null)
+    try {
+      const result = await shareInvite(roomId)
+      if (result === "copied") setShareStatus(screenCopy.shareCopied)
+    } catch {
+      setShareStatus(screenCopy.shareFailed)
+    }
+  }
 
   function enterRemoteGame() {
     connectRemote(roomId, { username: currentUsername() ?? "" })
@@ -157,16 +172,18 @@ export default function LobbyScreen() {
   }
 
   return (
-    <ScreenFrame title={screenCopy.lobbyTitle} status={status} errorText={serverError ?? undefined} onBack={leave}>
+    <ScreenFrame title={screenCopy.lobbyTitle} status={status} errorText={serverError ?? undefined} onBack={leave} variant="open">
       <View style={styles.header}>
+        <BrandSeal size={52} />
         <Text style={styles.roomId}>{roomId}</Text>
         <Text style={styles.count}>{screenCopy.playerCountLine(rows.length, MAX_PLAYERS)}</Text>
-        <Button label={screenCopy.shareInvite} variant="secondary" onPress={() => void Share.share({ message: screenCopy.shareMessage(roomId) })} />
+        {shareStatus && <Toast text={shareStatus} tone={shareStatus === screenCopy.shareCopied ? "success" : "danger"} />}
+        <Button label={screenCopy.shareInvite} variant="secondary" onPress={() => void shareRoom()} />
       </View>
 
-      <View style={styles.seats}>
+      <View style={[styles.seats, desktop && styles.seatsDesktop]}>
         {rows.map((row, index) => (
-          <View key={row.id} style={styles.seat}>
+          <View key={row.id} style={[styles.seat, desktop && styles.seatDesktop]}>
             <View style={styles.seatMain}>
               <Avatar name={row.name} size={44} />
               <View style={styles.seatText}>
@@ -224,6 +241,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     gap: spacing.sm,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radii.control,
+    backgroundColor: colors.glass,
   },
   roomId: {
     fontFamily: fontFamily.documentBold,
@@ -239,12 +261,16 @@ const styles = StyleSheet.create({
   seats: {
     gap: spacing.sm,
   },
+  seatsDesktop: { flexDirection: "row", flexWrap: "wrap" },
   seat: {
     padding: spacing.md,
     borderRadius: radii.control,
     backgroundColor: colors.surfaceRaised,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+  seatDesktop: { width: "49%" },
   seatMain: {
     flexDirection: "row",
     alignItems: "center",
@@ -285,6 +311,11 @@ const styles = StyleSheet.create({
   },
   board: {
     gap: spacing.md,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.control,
+    backgroundColor: colors.glass,
   },
   sectionTitle: {
     fontFamily: fontFamily.interfaceSemiBold,
