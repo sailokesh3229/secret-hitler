@@ -1,7 +1,7 @@
 /* S8 Join room: Room ID + password. Every error has its own message, and
    5 wrong passwords lock the form for 5 minutes (mockServer.ts). The dev
    menu opens each error directly with ?state=<key>. */
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { StyleSheet, Text } from "react-native"
 import { colors, fontFamily, fontSize, screenCopy } from "@game/theme"
@@ -10,7 +10,8 @@ import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js
 import { TextField } from "../src/components/TextField.js"
 import { Toast } from "../src/components/Toast.js"
 import { joinMockRoom, type JoinError } from "../src/lib/mockServer.js"
-import { api, ApiError, mockAllowed, serverConfigured } from "../src/lib/api.js"
+import { api, apiEnabled, ApiError, mockAllowed, serverConfigured } from "../src/lib/api.js"
+import { restoreSession } from "../src/lib/firebase.js"
 import { isRoomIdComplete, ROOM_ID_LENGTH } from "../src/lib/validation.js"
 
 type FormError = JoinError | "ID_LENGTH"
@@ -47,8 +48,25 @@ export default function JoinRoomScreen() {
   const [roomId, setRoomId] = useState(() => (params.roomId ?? "").toUpperCase().slice(0, ROOM_ID_LENGTH))
   const [password, setPassword] = useState("")
   const [error, setError] = useState<FormError | null>(devError ?? null)
+  const [authState, setAuthState] = useState<"loading" | "ready" | "signed-out" | "error">(apiEnabled() ? "loading" : "ready")
+  const [authRetry, setAuthRetry] = useState(0)
   const isLocked = error === "LOCKED"
   const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : "ready"
+
+  useEffect(() => {
+    if (!apiEnabled()) return
+    let active = true
+    setAuthState("loading")
+    void restoreSession().then((session) => {
+      if (!active) return
+      if (session === "ready") setAuthState("ready")
+      else if (session === "needs-username") router.replace({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
+      else setAuthState("signed-out")
+    }).catch(() => {
+      if (active) setAuthState("error")
+    })
+    return () => { active = false }
+  }, [params.roomId, authRetry, router])
 
   async function submitToServer() {
     try {
@@ -85,6 +103,27 @@ export default function JoinRoomScreen() {
 
   const fieldError = error === "ID_LENGTH" ? ERROR_COPY.ID_LENGTH : undefined
   const formError = error && error !== "ID_LENGTH" ? ERROR_COPY[error] : undefined
+
+  if (authState === "loading") {
+    return <ScreenFrame title={screenCopy.joinRoomTitle} status="loading" onBack={() => router.back()}>{null}</ScreenFrame>
+  }
+  if (authState === "error") {
+    return (
+      <ScreenFrame title={screenCopy.joinRoomTitle} status="error" onBack={() => router.back()}>
+        <Button label={screenCopy.tryAgain} onPress={() => setAuthRetry((value) => value + 1)} />
+      </ScreenFrame>
+    )
+  }
+  if (authState === "signed-out") {
+    const inviteParams = params.roomId ? { roomId: params.roomId } : {}
+    return (
+      <ScreenFrame title={screenCopy.joinRoomTitle} onBack={() => router.back()}>
+        <Text style={styles.hint}>{screenCopy.joinRoomSignIn}</Text>
+        <Button label={screenCopy.signUp} onPress={() => router.push({ pathname: "/login", params: { mode: "signup", ...inviteParams } })} />
+        <Button label={screenCopy.logIn} variant="secondary" onPress={() => router.push({ pathname: "/login", params: { mode: "login", ...inviteParams } })} />
+      </ScreenFrame>
+    )
+  }
 
   return (
     <ScreenFrame title={screenCopy.joinRoomTitle} status={status} onBack={() => router.back()}>

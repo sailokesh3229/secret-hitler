@@ -86,6 +86,7 @@ export const screenCopy = {
   goToLobby: "Go to lobby",
 
   joinRoomTitle: "Join a room",
+  joinRoomSignIn: "Sign up or log in to join this room. Your Room ID will be saved while you sign in.",
   roomIdLabel: "Room ID",
   roomIdHint: "6 characters, shown on the host's phone.",
   roomIdLength: "Room IDs have 6 characters.",

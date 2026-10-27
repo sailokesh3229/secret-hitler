@@ -11,7 +11,7 @@ import { api, ApiError, setSessionUsername } from "../src/lib/api.js"
 
 export default function EmailScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ mode?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; roomId?: string }>()
   const signUp = params.mode === "signup"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -25,14 +25,14 @@ export default function EmailScreen() {
     try {
       await (signUp ? createAccountWithEmail : signInWithEmail)(email.trim(), password)
       if (signUp) {
-        router.replace("/username")
+        router.replace({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
       } else {
         try {
           const me = await api.me()
           setSessionUsername(me.username)
-          router.replace("/home")
+          router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : "/home")
         } catch (error) {
-          if (error instanceof ApiError && error.status === 404) router.replace("/username")
+          if (error instanceof ApiError && error.status === 404) router.replace({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
           else throw error
         }
       }

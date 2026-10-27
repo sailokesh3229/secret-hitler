@@ -18,7 +18,7 @@ type Availability = "idle" | "checking" | "available" | "taken" | "error"
 
 export default function UsernameScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ state?: string }>()
+  const params = useLocalSearchParams<{ state?: string; roomId?: string }>()
   const [name, setName] = useState("")
   const [checkedName, setCheckedName] = useState("")
   const [availability, setAvailability] = useState<Availability>("idle")
@@ -78,7 +78,7 @@ export default function UsernameScreen() {
       }
       setSessionUsername(name)
     }
-    router.replace("/home")
+    router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : "/home")
   }
 
   return (
