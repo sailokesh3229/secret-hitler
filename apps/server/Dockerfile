@@ -8,8 +8,8 @@
 # Build from the repo root so the whole pnpm workspace resolves:
 #   docker build -f apps/server/Dockerfile -t secret-hitler-server .
 #
-# Needs at runtime: either FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/
-# FIREBASE_PRIVATE_KEY or ALLOW_GUEST_LOGIN=true. DATABASE_URL and REDIS_URL
+# Needs at runtime: FIREBASE_PROJECT_ID for email login, or no Firebase
+# configuration for temporary guest login. DATABASE_URL and REDIS_URL
 # are both optional - without them the server runs entirely in memory
 # (fine for a demo; accounts and game history are lost on restart).
 FROM node:22-slim AS base

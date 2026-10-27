@@ -1,6 +1,7 @@
-/* Firebase ID token verification (spec Sec 11, Step 9). The server never trusts a client-sent user id: it verifies the token and uses the provider uid. Configured from .env (never committed). */
-import { cert, getApps, initializeApp } from "firebase-admin/app"
-import { getAuth } from "firebase-admin/auth"
+/* Firebase ID token verification (spec Sec 11, Step 9). The server trusts
+   only a verified provider UID. Google's public certificates are sufficient;
+   this does not require a service-account private key. */
+import { createPublicKey, verify as verifySignature } from "node:crypto"
 
 export interface VerifiedIdentity {
   provider: string
@@ -15,21 +16,68 @@ export const rejectingVerifier: TokenVerifier = {
   verify: () => Promise.resolve(null),
 }
 
-export function createFirebaseVerifier(env: NodeJS.ProcessEnv): TokenVerifier {
+const CERT_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+
+interface FirebaseClaims {
+  aud?: unknown
+  iss?: unknown
+  sub?: unknown
+  exp?: unknown
+  iat?: unknown
+  auth_time?: unknown
+  firebase?: { sign_in_provider?: unknown }
+}
+
+/* Firebase publishes rotating RSA signing certificates. Cache them for the
+   duration Google specifies and fail closed on any fetch or validation error. */
+export function createFirebaseVerifier(
+  env: NodeJS.ProcessEnv,
+  options: { fetcher?: typeof fetch; now?: () => number } = {},
+): TokenVerifier {
   const projectId = env.FIREBASE_PROJECT_ID
-  const clientEmail = env.FIREBASE_CLIENT_EMAIL
-  const privateKey = env.FIREBASE_PRIVATE_KEY
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("Firebase is not configured: set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in .env")
+  if (!projectId) throw new Error("Firebase is not configured: set FIREBASE_PROJECT_ID")
+  const fetcher = options.fetcher ?? fetch
+  const now = options.now ?? Date.now
+  let certificates: Record<string, string> = {}
+  let certificatesExpireAt = 0
+
+  async function certificateFor(kid: string): Promise<string | null> {
+    if (now() >= certificatesExpireAt) {
+      const response = await fetcher(CERT_URL, { signal: AbortSignal.timeout(5000) })
+      if (!response.ok) return null
+      const received: unknown = await response.json()
+      if (!received || typeof received !== "object" || Array.isArray(received)) return null
+      certificates = Object.fromEntries(
+        Object.entries(received).filter(([key, value]) => key.length > 0 && typeof value === "string"),
+      )
+      const maxAge = Number(/(?:^|,)\s*max-age=(\d+)/i.exec(response.headers.get("cache-control") ?? "")?.[1] ?? 0)
+      certificatesExpireAt = now() + (Number.isSafeInteger(maxAge) ? maxAge * 1000 : 0)
+    }
+    return Object.hasOwn(certificates, kid) ? certificates[kid] ?? null : null
   }
-  const appName = "secret-hitler"
-  const app = getApps().find((existing) => existing.name === appName) ?? initializeApp({ credential: cert({ projectId, clientEmail, privateKey: privateKey.replace(/\n/g, "\n") }) }, appName)
-  const auth = getAuth(app)
+
   return {
     async verify(idToken) {
       try {
-        const decoded = await auth.verifyIdToken(idToken)
-        return { provider: decoded.firebase.sign_in_provider, providerUid: decoded.uid }
+        if (idToken.length > 20000) return null
+        const parts = idToken.split(".")
+        if (parts.length !== 3 || parts.some((part) => !/^[A-Za-z0-9_-]+$/.test(part))) return null
+        const [encodedHeader, encodedClaims, encodedSignature] = parts
+        if (!encodedHeader || !encodedClaims || !encodedSignature) return null
+        const header: unknown = JSON.parse(Buffer.from(encodedHeader, "base64url").toString("utf8"))
+        const claims: FirebaseClaims = JSON.parse(Buffer.from(encodedClaims, "base64url").toString("utf8")) as FirebaseClaims
+        if (!header || typeof header !== "object" || !("alg" in header) || header.alg !== "RS256" || !("kid" in header) || typeof header.kid !== "string" || !header.kid) return null
+        const seconds = Math.floor(now() / 1000)
+        if (claims.aud !== projectId || claims.iss !== "https://securetoken.google.com/" + projectId) return null
+        if (typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 128) return null
+        if (typeof claims.exp !== "number" || claims.exp <= seconds) return null
+        if (typeof claims.iat !== "number" || claims.iat > seconds) return null
+        if (typeof claims.auth_time !== "number" || claims.auth_time > seconds) return null
+        if (typeof claims.firebase?.sign_in_provider !== "string" || !claims.firebase.sign_in_provider) return null
+        const pem = await certificateFor(header.kid)
+        if (!pem) return null
+        const valid = verifySignature("RSA-SHA256", Buffer.from(encodedHeader + "." + encodedClaims), createPublicKey(pem), Buffer.from(encodedSignature, "base64url"))
+        return valid ? { provider: claims.firebase.sign_in_provider, providerUid: claims.sub } : null
       } catch {
         return null
       }

@@ -30,9 +30,9 @@ for what to build, and docs/plan.md for build order.
 Email/password sign-up and log-in use Firebase Authentication. Enable the
 Email/Password provider in your own Firebase project, then configure the
 `EXPO_PUBLIC_FIREBASE_*` values in the frontend build and the server's
-`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`
-from a service account. Keep the service account values private. The server
-verifies every Firebase ID token; the app refreshes it for HTTP and sockets.
+`FIREBASE_PROJECT_ID`. The server verifies Firebase ID token signatures
+against Google's published public certificates; it needs no service-account
+private key. The app refreshes its ID token for HTTP and sockets.
 
 For a temporary coursework demo without Firebase, guest login is enabled by
 default on the server; set `EXPO_PUBLIC_DEV_LOGIN=true` for the frontend build. Each
