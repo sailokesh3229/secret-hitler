@@ -25,7 +25,8 @@ export default function LoginScreen() {
     try {
       await startGuestSession()
       router.push("/username")
-    } catch {
+    } catch (error) {
+      console.warn("Guest sign-in failed:", error)
       setGuestError(true)
     } finally {
       setBusy(false)
