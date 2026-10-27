@@ -66,6 +66,7 @@ export const screenCopy = {
   profile: "Profile",
 
   createRoomTitle: "Create a room",
+  createRoomSignIn: "Sign up or log in to create a room. We will return here after you finish.",
   tableMode: "Table mode",
   inPerson: "In-person",
   online: "Online",

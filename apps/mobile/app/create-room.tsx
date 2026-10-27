@@ -1,6 +1,6 @@
 /* S7 Create room: table mode, room password, settings, then the generated
    6-character Room ID (no look-alike characters, see mockServer.ts). */
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { StyleSheet, Switch, Text, View } from "react-native"
 import { colors, fontFamily, fontSize, radii, screenCopy, spacing } from "@game/theme"
@@ -10,7 +10,8 @@ import { Toast } from "../src/components/Toast.js"
 import { Segmented } from "../src/components/Segmented.js"
 import { TextField } from "../src/components/TextField.js"
 import { createMockRoom, type MockRoom, type TableMode } from "../src/lib/mockServer.js"
-import { api, mockAllowed, serverConfigured } from "../src/lib/api.js"
+import { api, apiEnabled, ApiError, mockAllowed, serverConfigured } from "../src/lib/api.js"
+import { restoreSession } from "../src/lib/firebase.js"
 import { passwordProblem } from "../src/lib/validation.js"
 import { shareInvite } from "../src/lib/invite.js"
 
@@ -29,6 +30,20 @@ export default function CreateRoomScreen() {
   const [room, setRoom] = useState<MockRoom | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [shareStatus, setShareStatus] = useState<string | null>(null)
+  const [authState, setAuthState] = useState<"loading" | "ready" | "signed-out" | "needs-username" | "error">(apiEnabled() ? "loading" : "ready")
+  const [authRetry, setAuthRetry] = useState(0)
+
+  useEffect(() => {
+    if (!apiEnabled()) return
+    let active = true
+    setAuthState("loading")
+    void restoreSession().then((session) => {
+      if (active) setAuthState(session === "ready" ? "ready" : session)
+    }).catch(() => {
+      if (active) setAuthState("error")
+    })
+    return () => { active = false }
+  }, [authRetry])
 
   async function shareRoom(roomId: string) {
     setShareStatus(null)
@@ -53,14 +68,40 @@ export default function CreateRoomScreen() {
       const view = await api.createRoom(mode, password, { timers, chat })
       setServerError(null)
       setRoom({ id: view.code, password, playerCount: view.seats.length, started: false })
-    } catch {
-      setServerError(screenCopy.genericError)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) setAuthState("signed-out")
+      else setServerError(error instanceof TypeError ? screenCopy.offline : screenCopy.genericError)
     }
   }
   const problem = passwordProblem(password)
   const passwordError = password.length > 0 && problem !== null ? screenCopy.passwordLength : undefined
   const status: ScreenStatus =
     params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : params.state === "error" ? "error" : "ready"
+
+  if (authState === "loading") return <ScreenFrame title={screenCopy.createRoomTitle} status="loading" onBack={() => router.back()}>{null}</ScreenFrame>
+  if (authState === "error") {
+    return (
+      <ScreenFrame title={screenCopy.createRoomTitle} status="error" onBack={() => router.back()}>
+        <Button label={screenCopy.tryAgain} onPress={() => setAuthRetry((value) => value + 1)} />
+      </ScreenFrame>
+    )
+  }
+  if (authState === "needs-username") {
+    return (
+      <ScreenFrame title={screenCopy.createRoomTitle} onBack={() => router.back()}>
+        <Button label={screenCopy.usernameTitle} onPress={() => router.replace({ pathname: "/username", params: { next: "create-room" } })} />
+      </ScreenFrame>
+    )
+  }
+  if (authState === "signed-out") {
+    return (
+      <ScreenFrame title={screenCopy.createRoomTitle} onBack={() => router.back()}>
+        <Text style={styles.hint}>{screenCopy.createRoomSignIn}</Text>
+        <Button label={screenCopy.signUp} onPress={() => router.push({ pathname: "/login", params: { mode: "signup", next: "create-room" } })} />
+        <Button label={screenCopy.logIn} variant="secondary" onPress={() => router.push({ pathname: "/login", params: { mode: "login", next: "create-room" } })} />
+      </ScreenFrame>
+    )
+  }
 
   if (room) {
     return (

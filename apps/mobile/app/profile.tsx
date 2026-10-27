@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { useRouter } from "expo-router"
 import { StyleSheet, Switch, Text, View } from "react-native"
-import { actionLabels, colors, fontFamily, fontSize, moreCopy, spacing } from "@game/theme"
+import { actionLabels, colors, fontFamily, fontSize, moreCopy, screenCopy, spacing } from "@game/theme"
 import { Button } from "../src/components/Button.js"
 import { ScreenFrame } from "../src/components/ScreenFrame.js"
 import { Sheet } from "../src/components/Sheet.js"
@@ -13,9 +13,11 @@ import { useGameStore } from "../src/game/store.js"
 import { apiEnabled, currentUsername, gamesApi } from "../src/lib/api.js"
 import { signOutAccount } from "../src/lib/firebase.js"
 import { getSettings, updateSettings, type Settings } from "../src/lib/settings.js"
+import { useProtectedSession } from "../src/lib/useProtectedSession.js"
 
 export default function ProfileScreen() {
   const router = useRouter()
+  const session = useProtectedSession()
   const disconnectRemote = useGameStore((store) => store.disconnectRemote)
   const [settings, setSettings] = useState<Settings>(() => getSettings())
   const [confirming, setConfirming] = useState(false)
@@ -51,6 +53,9 @@ export default function ProfileScreen() {
       <Switch value={value} onValueChange={(next) => setFlag(key, next)} trackColor={{ false: colors.disabled, true: colors.accent }} thumbColor={colors.paper} />
     </View>
   )
+
+  if (session.state === "loading") return <ScreenFrame title={moreCopy.profileTitle} status="loading">{null}</ScreenFrame>
+  if (session.state === "error") return <ScreenFrame title={moreCopy.profileTitle} status="error"><Button label={screenCopy.tryAgain} onPress={session.retry} /></ScreenFrame>
 
   return (
     <ScreenFrame title={moreCopy.profileTitle} onBack={() => router.back()}>

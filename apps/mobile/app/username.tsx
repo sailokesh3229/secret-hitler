@@ -18,7 +18,7 @@ type Availability = "idle" | "checking" | "available" | "taken" | "error"
 
 export default function UsernameScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ state?: string; roomId?: string }>()
+  const params = useLocalSearchParams<{ state?: string; roomId?: string; next?: string }>()
   const [name, setName] = useState("")
   const [checkedName, setCheckedName] = useState("")
   const [availability, setAvailability] = useState<Availability>("idle")
@@ -69,16 +69,24 @@ export default function UsernameScreen() {
   async function save() {
     if (apiEnabled()) {
       try {
-        await api.saveUsername(name)
+        const saved = await api.saveUsername(name)
+        setSessionUsername(saved.username)
       } catch (error) {
-        if (!(error instanceof ApiError) || error.code !== "ALREADY_HAS_USERNAME") {
+        if (error instanceof ApiError && error.code === "ALREADY_HAS_USERNAME") {
+          try {
+            const existing = await api.me()
+            setSessionUsername(existing.username)
+          } catch {
+            setServerError(screenCopy.genericError)
+            return
+          }
+        } else {
           setServerError(error instanceof ApiError && error.code === "USERNAME_TAKEN" ? screenCopy.usernameTaken(name) : screenCopy.genericError)
           return
         }
       }
-      setSessionUsername(name)
     }
-    router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : "/home")
+    router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : params.next === "create-room" ? "/create-room" : "/home")
   }
 
   return (

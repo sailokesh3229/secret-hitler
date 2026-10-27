@@ -11,7 +11,7 @@ import { api, ApiError, setSessionUsername } from "../src/lib/api.js"
 
 export default function EmailScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ mode?: string; roomId?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; roomId?: string; next?: string }>()
   const signUp = params.mode === "signup"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -25,14 +25,14 @@ export default function EmailScreen() {
     try {
       await (signUp ? createAccountWithEmail : signInWithEmail)(email.trim(), password)
       if (signUp) {
-        router.replace({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
+        router.replace({ pathname: "/username", params: { ...(params.roomId ? { roomId: params.roomId } : {}), ...(params.next === "create-room" ? { next: params.next } : {}) } })
       } else {
         try {
           const me = await api.me()
           setSessionUsername(me.username)
-          router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : "/home")
+          router.replace(params.roomId ? { pathname: "/join-room", params: { roomId: params.roomId } } : params.next === "create-room" ? "/create-room" : "/home")
         } catch (error) {
-          if (error instanceof ApiError && error.status === 404) router.replace({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
+          if (error instanceof ApiError && error.status === 404) router.replace({ pathname: "/username", params: { ...(params.roomId ? { roomId: params.roomId } : {}), ...(params.next === "create-room" ? { next: params.next } : {}) } })
           else throw error
         }
       }

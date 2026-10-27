@@ -13,7 +13,7 @@ import { Toast } from "../src/components/Toast.js"
 
 export default function LoginScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ mode?: string; roomId?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; roomId?: string; next?: string }>()
   const signUp = params.mode === "signup"
   const firebase = firebaseConfigured()
   const guest = !firebase && DEV_LOGIN && apiEnabled()
@@ -24,7 +24,7 @@ export default function LoginScreen() {
     setGuestError(false)
     try {
       await startGuestSession()
-      router.push({ pathname: "/username", params: params.roomId ? { roomId: params.roomId } : {} })
+      router.push({ pathname: "/username", params: { ...(params.roomId ? { roomId: params.roomId } : {}), ...(params.next === "create-room" ? { next: params.next } : {}) } })
     } catch (error) {
       console.warn("Guest sign-in failed:", error)
       setGuestError(true)
@@ -35,7 +35,7 @@ export default function LoginScreen() {
   return (
     <ScreenFrame title={signUp ? screenCopy.signUp : screenCopy.logIn} onBack={() => router.back()}>
       <Text style={styles.hint}>{firebase ? screenCopy.loginHint : guest ? screenCopy.guestLoginHint : screenCopy.authNotConfigured}</Text>
-      {firebase && <Button label={screenCopy.continueWithEmail} onPress={() => router.push({ pathname: "/email", params: { mode: signUp ? "signup" : "login", ...(params.roomId ? { roomId: params.roomId } : {}) } })} />}
+      {firebase && <Button label={screenCopy.continueWithEmail} onPress={() => router.push({ pathname: "/email", params: { mode: signUp ? "signup" : "login", ...(params.roomId ? { roomId: params.roomId } : {}), ...(params.next === "create-room" ? { next: params.next } : {}) } })} />}
       {guestError && <Toast text={screenCopy.offline} tone="danger" />}
       {guest && <Button label={screenCopy.continueAsGuest} disabled={busy} onPress={() => void beginGuest()} />}
     </ScreenFrame>

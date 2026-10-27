@@ -3,25 +3,34 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "expo-router"
 import { Pressable, StyleSheet, Text } from "react-native"
-import { colors, fontFamily, fontSize, moreCopy, radii, roleNames, spacing, type RoleToken } from "@game/theme"
+import { colors, fontFamily, fontSize, moreCopy, radii, roleNames, screenCopy, spacing, type RoleToken } from "@game/theme"
+import { Button } from "../src/components/Button.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
 import { apiEnabled, gamesApi, type GameListItemView } from "../src/lib/api.js"
+import { useProtectedSession } from "../src/lib/useProtectedSession.js"
 
 export default function HistoryScreen() {
   const router = useRouter()
+  const session = useProtectedSession()
   const [items, setItems] = useState<GameListItemView[] | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    if (session.state !== "ready") return
     if (!apiEnabled()) {
       setItems([])
       return
     }
-    gamesApi.mine().then(setItems).catch(() => setFailed(true))
-  }, [])
+    let active = true
+    gamesApi.mine().then((result) => { if (active) setItems(result) }).catch(() => { if (active) setFailed(true) })
+    return () => { active = false }
+  }, [session.state])
 
   const status: ScreenStatus = failed ? "error" : items === null ? "loading" : "ready"
   const wins = (items ?? []).filter((item) => item.won).length
+
+  if (session.state === "loading") return <ScreenFrame title={moreCopy.historyTitle} status="loading">{null}</ScreenFrame>
+  if (session.state === "error") return <ScreenFrame title={moreCopy.historyTitle} status="error"><Button label={screenCopy.tryAgain} onPress={session.retry} /></ScreenFrame>
 
   return (
     <ScreenFrame title={moreCopy.historyTitle} status={status} errorText={moreCopy.historyLoadFailed} onBack={() => router.back()}>

@@ -10,6 +10,7 @@ import { BrandSeal } from "../src/components/BrandSeal.js"
 import { Button } from "../src/components/Button.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
 import { apiEnabled, currentUsername, gamesApi, type GameListItemView } from "../src/lib/api.js"
+import { useProtectedSession } from "../src/lib/useProtectedSession.js"
 
 const MOCK_PLAYER_NAME = "Arjun"
 const MOCK_RESUME_ROOM_ID = "K7M2QX"
@@ -24,17 +25,23 @@ export default function HomeScreen() {
   const desktop = width >= 800
   const params = useLocalSearchParams<{ state?: string }>()
   const live = apiEnabled()
-  const name = currentUsername() || MOCK_PLAYER_NAME
+  const session = useProtectedSession()
+  const name = live ? currentUsername() ?? "" : MOCK_PLAYER_NAME
   const [recent, setRecent] = useState<GameListItemView[] | null>(null)
 
   useEffect(() => {
-    if (!live) return
-    gamesApi.mine().then((items) => setRecent(items.slice(0, 2))).catch(() => setRecent([]))
-  }, [live])
+    if (!live || session.state !== "ready") return
+    let active = true
+    gamesApi.mine().then((items) => { if (active) setRecent(items.slice(0, 2)) }).catch(() => { if (active) setRecent([]) })
+    return () => { active = false }
+  }, [live, session.state])
 
   const showResume = params.state === "resume"
   const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : "ready"
   const mockHistory = params.state === "empty" ? [] : MOCK_HISTORY
+
+  if (session.state === "loading") return <ScreenFrame title={screenCopy.appName} status="loading">{null}</ScreenFrame>
+  if (session.state === "error") return <ScreenFrame title={screenCopy.appName} status="error"><Button label={screenCopy.tryAgain} onPress={session.retry} /></ScreenFrame>
 
   return (
     <ScreenFrame title={screenCopy.greeting(name)} status={status} variant="open">

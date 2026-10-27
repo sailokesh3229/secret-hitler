@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { StyleSheet, Text, View } from "react-native"
-import { colors, fontFamily, fontSize, moreCopy, roleNames, spacing, teamNames, winReasonCopy, type RoleToken, type TeamToken } from "@game/theme"
+import { colors, fontFamily, fontSize, moreCopy, roleNames, screenCopy, spacing, teamNames, winReasonCopy, type RoleToken, type TeamToken } from "@game/theme"
 import { partyMembership } from "@game/engine"
 import { Avatar } from "../src/components/Avatar.js"
+import { Button } from "../src/components/Button.js"
 import { LogEntry } from "../src/components/LogEntry.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
 import { gamesApi } from "../src/lib/api.js"
+import { useProtectedSession } from "../src/lib/useProtectedSession.js"
 import { describePublicEvent, type PublicEventLike } from "../src/game/remoteLog.js"
 
 type Detail = Awaited<ReturnType<typeof gamesApi.detail>>
@@ -16,17 +18,23 @@ type Detail = Awaited<ReturnType<typeof gamesApi.detail>>
 export default function HistoryGameScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{ id?: string }>()
+  const session = useProtectedSession()
   const [detail, setDetail] = useState<Detail | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!params.id) return
-    gamesApi.detail(params.id).then(setDetail).catch(() => setFailed(true))
-  }, [params.id])
+    if (!params.id || session.state !== "ready") return
+    let active = true
+    gamesApi.detail(params.id).then((result) => { if (active) setDetail(result) }).catch(() => { if (active) setFailed(true) })
+    return () => { active = false }
+  }, [params.id, session.state])
 
   const status: ScreenStatus = failed ? "error" : detail === null ? "loading" : "ready"
   const names = Object.fromEntries((detail?.players ?? []).map((player) => [player.userId, player.username ?? player.userId]))
   const winnerTeam = detail?.winner === "TEAM_LIBERAL" ? "TEAM_LIBERAL" : "TEAM_FASCIST"
+
+  if (session.state === "loading") return <ScreenFrame title={moreCopy.historyDetailTitle} status="loading">{null}</ScreenFrame>
+  if (session.state === "error") return <ScreenFrame title={moreCopy.historyDetailTitle} status="error"><Button label={screenCopy.tryAgain} onPress={session.retry} /></ScreenFrame>
 
   return (
     <ScreenFrame title={moreCopy.historyDetailTitle} status={status} errorText={moreCopy.historyLoadFailed} onBack={() => router.back()}>
