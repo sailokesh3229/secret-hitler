@@ -77,7 +77,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
-  createGuestSession: () => request<{ token: string }>("POST", "/auth/guest"),
+  createGuestSession: () => request<{ token: string }>("POST", "/auth/guest", {}),
   me: () => request<{ id: string; username: string }>("GET", "/me"),
   saveUsername: (username: string) => request<{ id: string; username: string }>("POST", "/me", { username }),
   checkUsername: (username: string) => request<{ available: boolean }>("GET", "/usernames/" + encodeURIComponent(username) + "/availability"),
