@@ -34,6 +34,12 @@ Email/Password provider in your own Firebase project, then configure the
 against Google's published public certificates; it needs no service-account
 private key. The app refreshes its ID token for HTTP and sockets.
 
+For phone testing against the deployed server, put its HTTPS URL and the four
+`EXPO_PUBLIC_FIREBASE_*` values from `.env.example` in the ignored
+`apps/mobile/.env`, then run `pnpm dev:mobile`. The startup script preserves
+an explicit HTTPS API URL. Native release builds also need these public values
+set in their build environment; they are baked into the Expo bundle.
+
 For a temporary coursework demo without Firebase, guest login is enabled by
 default on the server; set `EXPO_PUBLIC_DEV_LOGIN=true` for the frontend build. Each
 guest receives a server-signed token; `dev:<name>` tokens are rejected by the

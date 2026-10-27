@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Keeps apps/mobile/.env pointed at this machine's current Wi-Fi/LAN IP.
+/* Keeps local HTTP development pointed at this machine's current Wi-Fi/LAN IP.
    Windows (and most routers) hand out a new IP whenever this machine
    reconnects, which silently breaks EXPO_PUBLIC_API_URL - the symptom is a
    generic "Something went wrong" on the first screen that calls the server
@@ -12,6 +12,15 @@ import { join } from "node:path"
 
 const ENV_PATH = join(process.cwd(), ".env")
 const DEFAULT_PORT = 4000
+const existing = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : ""
+const configuredUrl = /^EXPO_PUBLIC_API_URL=(.+)$/m.exec(existing)?.[1]?.trim()
+
+/* A configured HTTPS endpoint is deliberate (for example the deployed
+   coursework server). Do not replace it with a local LAN address. */
+if (configuredUrl?.startsWith("https://")) {
+  console.log("syncLanIp: keeping the configured HTTPS API URL.")
+  process.exit(0)
+}
 
 function currentLanIp() {
   const candidates = []
@@ -38,7 +47,6 @@ if (!ip) {
   process.exit(0)
 }
 
-const existing = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : ""
 const port = currentPort(existing)
 const nextUrl = `EXPO_PUBLIC_API_URL=http://${ip}:${port}`
 
