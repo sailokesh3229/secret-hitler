@@ -65,6 +65,7 @@ export function createPrismaUserRepository(prisma: PrismaClient): UserRepository
 
 export function createMemoryUserRepository(): UserRepository {
   const users: UserRecord[] = []
+  let nextId = 1
   return {
     usernameTaken(username) {
       return Promise.resolve(users.some((user) => user.username.toLowerCase() === username.toLowerCase()))
@@ -81,7 +82,7 @@ export function createMemoryUserRepository(): UserRepository {
       if (users.some((existing) => existing.username.toLowerCase() === user.username.toLowerCase())) {
         return Promise.reject(new UsernameTakenError())
       }
-      const record: UserRecord = { id: String(users.length + 1), ...user }
+      const record: UserRecord = { id: String(nextId++), ...user }
       users.push(record)
       return Promise.resolve(record)
     },

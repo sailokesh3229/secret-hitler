@@ -107,3 +107,19 @@ model GameEvent {
   @@id([gameId, seq])
   @@map("game_events")
 }
+
+// Active room and game snapshots are deliberately separate from finished-game
+// history. A free web worker can restart between player turns.
+model LiveRoom {
+  code  String @id
+  state Json
+
+  @@map("live_rooms")
+}
+
+model LiveValue {
+  key   String @id
+  value String @db.Text
+
+  @@map("live_values")
+}

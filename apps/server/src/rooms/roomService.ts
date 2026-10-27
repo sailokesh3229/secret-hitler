@@ -120,10 +120,11 @@ export function createRoomService(deps: RoomServiceDeps) {
     async create(host: UserRef, input: { mode: TableMode; password: string; settings: RoomSettings }): Promise<RoomView> {
       const problem = roomPasswordProblem(input.password)
       if (problem !== null) throw new RoomError(problem)
+      const passwordHash = await hasher.hash(input.password)
       const room: Room = {
         code: freshCode(),
         mode: input.mode,
-        passwordHash: await hasher.hash(input.password),
+        passwordHash,
         hostId: host.id,
         status: "LOBBY",
         settings: input.settings,
@@ -229,6 +230,10 @@ export function createRoomService(deps: RoomServiceDeps) {
 
     startedCodes(): string[] {
       return store.listStartedCodes()
+    },
+
+    flush(): Promise<void> {
+      return store.flush()
     },
 
     start(host: UserRef, rawCode: string): RoomView {

@@ -56,6 +56,27 @@ describe("S7 create a room (Step 10)", () => {
     expect(response.body).not.toContain("hash:")
     expect(response.json().canStart).toBe(false)
   })
+
+  it("assigns distinct codes when two hosts create rooms while password hashes are pending", async () => {
+    let releaseHashes: (() => void) | undefined
+    const hashGate = new Promise<void>((resolve) => { releaseHashes = resolve })
+    let counter = 0
+    const app = composeServer({
+      verifier: createDevVerifier(), users: createMemoryUserRepository(), store: createMemoryRoomStore(),
+      hasher: { hash: async (password) => { await hashGate; return "hash:" + password }, verify: fakeHasher.verify },
+      randomInt: (max) => (counter++ * 7) % max, now: () => currentTime,
+    }).app
+    const first = await registered(app, "FirstHost")
+    const second = await registered(app, "SecondHost")
+    const requests = [first, second].map((host) => app.inject({
+      method: "POST", url: "/rooms", headers: host.auth,
+      payload: { mode: "MODE_IN_PERSON", password: "1234", settings: SETTINGS },
+    }))
+    releaseHashes?.()
+    const results = await Promise.all(requests)
+    expect(results.map((result) => result.statusCode)).toEqual([201, 201])
+    expect(new Set(results.map((result) => result.json().code)).size).toBe(2)
+  })
 })
 
 describe("S9 start rules (Step 10)", () => {

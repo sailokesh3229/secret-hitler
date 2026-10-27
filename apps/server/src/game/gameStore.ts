@@ -7,6 +7,15 @@ export interface KeyValueClient {
   set(key: string, value: string): Promise<unknown>
 }
 
+import type { PrismaClient } from "@prisma/client"
+
+export function createPrismaKeyValue(prisma: PrismaClient): KeyValueClient {
+  return {
+    get: async (key) => (await prisma.liveValue.findUnique({ where: { key } }))?.value ?? null,
+    set: (key, value) => prisma.liveValue.upsert({ where: { key }, create: { key, value }, update: { value } }),
+  }
+}
+
 export function createMemoryKeyValue(): KeyValueClient {
   const values = new Map<string, string>()
   return {

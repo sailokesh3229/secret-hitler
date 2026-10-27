@@ -141,7 +141,9 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
 
   async function withRoomErrors(reply: FastifyReply, action: () => Promise<unknown> | unknown) {
     try {
-      return await action()
+      const result = await action()
+      await deps.rooms.flush()
+      return result
     } catch (error) {
       if (error instanceof RoomError) {
         return reply.code(ROOM_ERROR_STATUS[error.code]).send({ code: error.code })
@@ -159,7 +161,9 @@ export function buildApp(deps: AppDeps, options: AppOptions = {}) {
       return reply.code(400).send({ code: "INVALID_ROOM_SETTINGS" })
     }
     const password = typeof request.body?.password === "string" ? request.body.password : ""
-    return withRoomErrors(reply, async () => reply.code(201).send(await deps.rooms.create(user, { mode, password, settings: settings.data })))
+    const view = await withRoomErrors(reply, () => deps.rooms.create(user, { mode, password, settings: settings.data }))
+    if (reply.sent) return reply
+    return reply.code(201).send(view)
   })
 
   app.get<{ Params: { code: string } }>("/rooms/:code", async (request, reply) => {

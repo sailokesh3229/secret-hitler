@@ -19,8 +19,9 @@ for what to build, and docs/plan.md for build order.
 1. Copy .env.example to .env and fill in values as they become needed.
 2. pnpm install
 3. `pnpm dev:server` starts the API and sockets with in-memory storage if
-   `DATABASE_URL` and `REDIS_URL` are absent. Use `pnpm db:up` only when you
-   want PostgreSQL and Redis locally.
+   `DATABASE_URL` and `REDIS_URL` are absent. A Postgres `DATABASE_URL` persists
+   users, live rooms, game snapshots and history. Use `pnpm db:up` only when
+   you want PostgreSQL and Redis locally.
 4. `pnpm dev:mobile` starts Expo; scan its QR code with Expo Go.
 5. For a web export, run `pnpm --filter @game/mobile exec expo export --platform web`
    and host `apps/mobile/dist` with a single-page rewrite to `/index.html`.
@@ -66,6 +67,15 @@ unavailable. The PWA needs a live connection to play; it does not cache
 private game state for offline use.
 
 The backend can run on a free Render web service for a course demonstration.
+For a match to survive Render's free-instance restarts, set a private
+`DATABASE_URL` on the server service and apply `pnpm --filter @game/server
+db:migrate` against that database before restarting the service. A direct
+Postgres endpoint is appropriate for migrations; the pooled endpoint can be
+used by the running server. Never put either connection string in Git or in
+the frontend's `EXPO_PUBLIC_*` settings. `REDIS_URL` is optional; with only
+Postgres configured, the server stores live game snapshots there too. The
+manual production smoke check is `node tools/sim/src/liveSmoke.mjs` with a
+local ignored `apps/mobile/.env`; it creates and removes two test accounts.
 An Azure deployment requires an active subscription with verified remaining
 credit/free-tier eligibility. Do not enable a paid tier solely for this demo.
 

@@ -10,6 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import EmbeddedPostgres from "embedded-postgres"
 import { PrismaClient } from "@prisma/client"
 import { createPrismaHistory, type GameSummary } from "./history.js"
+import { createPrismaRoomStore, type Room } from "../rooms/roomStore.js"
+import { createPrismaKeyValue } from "./gameStore.js"
 
 const PORT = 54329
 const DATABASE = "secret_hitler"
@@ -80,5 +82,31 @@ describe("game history in Postgres (plan Step 11)", () => {
     expect(saved?.winner).toBe("TEAM_LIBERAL")
     expect(saved?.players).toHaveLength(5)
     expect(saved?.events.map((event) => event.type)).toEqual(["NOMINATED", "GAME_OVER"])
+  }, 120000)
+})
+
+describe("live room and game recovery from Postgres", () => {
+  it("restores a room and private game snapshot after a fresh store opens", async () => {
+    const db = prisma as PrismaClient
+    const code = "P" + Date.now().toString(36).slice(-5).toUpperCase()
+    const initial: Room = {
+      code, mode: "MODE_ONLINE", passwordHash: "argon2-test-hash", hostId: "host-1",
+      status: "STARTED", settings: { timers: false, chat: true },
+      members: [{ userId: "host-1", username: "Host", ready: true, connected: true }],
+    }
+    const rooms = await createPrismaRoomStore(db)
+    rooms.set(initial)
+    await rooms.flush()
+    await createPrismaKeyValue(db).set("game:" + code, "private-game-snapshot")
+
+    const restored = await createPrismaRoomStore(db)
+    expect(restored.get(code)).toMatchObject({ code, status: "STARTED", passwordHash: "argon2-test-hash" })
+    expect(restored.get(code)?.members[0]?.connected).toBe(false)
+    expect(restored.listStartedCodes()).toContain(code)
+    expect(await createPrismaKeyValue(db).get("game:" + code)).toBe("private-game-snapshot")
+
+    restored.delete(code)
+    await restored.flush()
+    expect((await createPrismaRoomStore(db)).hasCode(code)).toBe(false)
   }, 120000)
 })

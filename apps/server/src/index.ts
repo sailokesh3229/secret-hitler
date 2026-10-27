@@ -8,9 +8,9 @@ import { createFirebaseVerifier, rejectingVerifier, type TokenVerifier } from ".
 import { createGuestAuth } from "./auth/guestTokens.js"
 import { composeServer, type ServerDeps } from "./server.js"
 import { argon2Hasher } from "./rooms/passwords.js"
-import { createMemoryRoomStore } from "./rooms/roomStore.js"
+import { createMemoryRoomStore, createPrismaRoomStore } from "./rooms/roomStore.js"
 import { createMemoryUserRepository, createPrismaUserRepository } from "./users/userRepository.js"
-import { createMemoryKeyValue, type KeyValueClient } from "./game/gameStore.js"
+import { createMemoryKeyValue, createPrismaKeyValue, type KeyValueClient } from "./game/gameStore.js"
 import { createMemoryHistory, createPrismaHistory } from "./game/history.js"
 import { Redis } from "ioredis"
 
@@ -49,7 +49,7 @@ if (isMain) {
   const port = Number(process.env.PORT ?? 4000)
   const host = process.env.HOST ?? "localhost"
   const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null
-  const kv: KeyValueClient = redis ?? createMemoryKeyValue()
+  let kv: KeyValueClient = redis ?? createMemoryKeyValue()
   const auth = chooseAuth(process.env)
   const deps: ServerDeps = { ...baseDeps(auth.verifier), issueGuestToken: auth.issueGuestToken, kv }
   /* Postgres is optional: without DATABASE_URL the server runs fully in
@@ -57,6 +57,9 @@ if (isMain) {
      database at all. Set DATABASE_URL to persist accounts and history. */
   if (process.env.DATABASE_URL) {
     const prisma = new PrismaClient()
+    deps.store = await createPrismaRoomStore(prisma)
+    if (!redis) kv = createPrismaKeyValue(prisma)
+    deps.kv = kv
     deps.users = createPrismaUserRepository(prisma)
     deps.history = createPrismaHistory(prisma)
   } else {
