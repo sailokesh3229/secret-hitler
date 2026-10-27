@@ -2,7 +2,7 @@
    S20 game history). The room row is created on first use because the live
    room lives in memory until rooms are persisted; its password hash is left
    empty here, since history never needs the password. */
-import type { Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { randomUUID } from "node:crypto"
 import { partyMembership } from "@game/engine"
 import type { PublicGameEvent } from "@game/protocol"
@@ -180,14 +180,17 @@ export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
         const anonymous = await tx.user.create({ data: { username: "deleted-player-" + randomUUID() } })
         await tx.gamePlayer.updateMany({ where: { userId }, data: { userId: anonymous.id } })
         await tx.room.updateMany({ where: { hostUserId: userId }, data: { hostUserId: anonymous.id } })
-        const events = await tx.gameEvent.findMany({ where: { gameId: { in: games.map((game) => game.gameId) } } })
-        for (const event of events) {
-          await tx.gameEvent.update({
-            where: { gameId_seq: { gameId: event.gameId, seq: event.seq } },
-            data: { payload: replacePlayerId(event.payload, userId, anonymous.id) as Prisma.InputJsonValue },
-          })
+        if (games.length > 0) {
+          /* Rewrite event JSON in one database operation. A full match has
+             hundreds of events, and one remote update per event can exceed
+             Prisma's transaction deadline on the free web worker. */
+          await tx.$executeRaw(Prisma.sql`
+            UPDATE "game_events"
+            SET "payload" = replace("payload"::text, ${userId}, ${anonymous.id})::jsonb
+            WHERE "game_id" IN (${Prisma.join(games.map((game) => game.gameId))})
+          `)
         }
-      })
+      }, { maxWait: 20000, timeout: 30000 })
     },
   }
 }

@@ -67,7 +67,8 @@ try {
   }
   for (const phone of phones) {
     for (const view of phone.views) {
-      const { myHand, myPeekedPolicies, myInvestigationResults, gameOverReveal, ...publicPart } = view
+      const { ownRole, myHand, myPeekedPolicies, myInvestigationResults, gameOverReveal, ...publicPart } = view
+      if (!ownRole) throw new Error("Player did not receive a private role")
       if (/POLICY_(LIBERAL|FASCIST)|ROLE_|VOTE_(YES|NO)/.test(JSON.stringify(publicPart))) throw new Error("Secret appeared in a public game view")
       if (view.phase !== PHASE_GAME_OVER && gameOverReveal !== null) throw new Error("Final roles appeared before game over")
       if (myHand !== null && ![view.presidentId, view.chancellorNomineeId].includes(view.viewerId)) throw new Error("Hand reached the wrong player")

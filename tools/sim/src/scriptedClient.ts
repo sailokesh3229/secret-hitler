@@ -122,6 +122,7 @@ function stepKey(view: PlayerView): string {
    action was applied cannot make it act twice. */
 export function attachPlayLoop(phone: ScriptedPhone, hostId: string, random: RandomFn): void {
   let lastKey = ""
+  let lastBallot = ""
   let pending = false
 
   function decide(view: PlayerView): void {
@@ -130,6 +131,11 @@ export function attachPlayLoop(phone: ScriptedPhone, hostId: string, random: Ran
     if (key === lastKey) return
     const action = chooseAction(view, hostId, random)
     if (action === null) return
+    /* Socket views can arrive out of order while other players vote. The
+       scripted phone should cast once per election, just like a human UI. */
+    const ballot = JSON.stringify([view.presidentId, view.chancellorNomineeId, view.electionTracker, view.liberalPoliciesEnacted, view.fascistPoliciesEnacted])
+    if (action.type === "vote" && ballot === lastBallot) return
+    if (action.type === "vote") lastBallot = ballot
     lastKey = key
     pending = true
     phone.actions += 1
