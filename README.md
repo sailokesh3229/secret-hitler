@@ -52,6 +52,11 @@ is not durable account sign-in.
 ## Platforms and hosting
 
 The web export works in a browser and can be installed as a desktop PWA.
+Accounts and rooms are held by Firebase and the game server, so players may
+use different browsers and devices at the same table. Each browser keeps its
+own sign-in session; sign in with the same email on a new browser. Browser
+sharing features are optional: room invites fall back to copying when the
+Web Share API is absent. PWA installation depends on browser support.
 Android and iOS use the same screens and game API; Expo bundling has been
 verified for both. Distributable native binaries still require EAS build
 credentials and device testing. Set `EXPO_PUBLIC_WEB_URL` in native builds
