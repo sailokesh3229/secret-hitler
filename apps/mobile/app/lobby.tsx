@@ -19,7 +19,8 @@ import { Button } from "../src/components/Button.js"
 import { FascistTrack } from "../src/components/FascistTrack.js"
 import { LiberalTrack } from "../src/components/LiberalTrack.js"
 import { ScreenFrame, type ScreenStatus } from "../src/components/ScreenFrame.js"
-import { api, currentUsername, serverConfigured, subscribeToRoom, type RoomView } from "../src/lib/api.js"
+import { api, apiEnabled, ApiError, currentUsername, subscribeToRoom, type RoomView } from "../src/lib/api.js"
+import { restoreSession } from "../src/lib/firebase.js"
 import { mockLobbyPlayers, type LobbyPlayer } from "../src/lib/mockServer.js"
 import { useGameStore } from "../src/game/store.js"
 import { shareInvite } from "../src/lib/invite.js"
@@ -46,7 +47,7 @@ export default function LobbyScreen() {
   const requestedCount = Number(params.count ?? "6")
   const startCount = Math.min(MAX_PLAYERS, Math.max(1, Number.isFinite(requestedCount) ? requestedCount : 6))
   const roomId = params.roomId ?? "K7M2QX"
-  const live = serverConfigured()
+  const live = apiEnabled()
   const startLocalGame = useGameStore((store) => store.start)
   const setViewer = useGameStore((store) => store.setViewer)
   const connectRemote = useGameStore((store) => store.connectRemote)
@@ -79,19 +80,43 @@ export default function LobbyScreen() {
   useEffect(() => {
     if (!live) return
     let active = true
-    void api.getRoom(roomId).then((view) => {
-      if (active) setServerView(view)
-    }).catch(() => setServerError(screenCopy.genericError))
-    const stop = subscribeToRoom(roomId, (view) => {
-      if (active) setServerView(view)
+    let stop: (() => void) | undefined
+    void restoreSession().then(async (session) => {
+      if (!active) return
+      if (session === "signed-out") { router.replace("/welcome"); return }
+      if (session === "needs-username") { router.replace("/username"); return }
+      const view = await api.getRoom(roomId)
+      if (!active) return
+      setServerView(view)
+      stop = subscribeToRoom(roomId, (next) => {
+        if (active) setServerView(next)
+      }, (code) => {
+        if (!active) return
+        if (code === null) { setServerError(null); return }
+        if (code === "ROOM_NOT_FOUND" || code === "NOT_IN_ROOM") {
+          setServerView(null)
+          setServerError(screenCopy.errNoRoom)
+          return
+        }
+        setServerError(screenCopy.offline)
+      })
+    }).catch((error: unknown) => {
+      if (active) setServerError(error instanceof ApiError && error.code === "ROOM_NOT_FOUND" ? screenCopy.errNoRoom : screenCopy.offline)
     })
     return () => {
       active = false
-      stop()
+      stop?.()
     }
-  }, [live, roomId])
+  }, [live, roomId, router])
 
-  const status: ScreenStatus = params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : params.state === "error" ? "error" : "ready"
+  const status: ScreenStatus = serverError ? "error" : params.state === "offline" ? "offline" : params.state === "loading" ? "loading" : params.state === "error" ? "error" : "ready"
+  if (live && serverView === null) {
+    return (
+      <ScreenFrame title={screenCopy.lobbyTitle} status={serverError ? "error" : "loading"} errorText={serverError ?? undefined} onBack={() => router.replace("/home")}>
+        <View />
+      </ScreenFrame>
+    )
+  }
 
   const rows: Row[] = live
     ? (serverView?.seats ?? []).map((seat) => ({ id: seat.userId, name: seat.username, ready: seat.ready, connected: seat.connected }))

@@ -92,11 +92,15 @@ export const api = {
   kick: (code: string, userId: string) => request<RoomView>("POST", "/rooms/" + code + "/kick", { userId }),
 }
 
-export function subscribeToRoom(code: string, onView: (view: RoomView) => void): () => void {
+export function subscribeToRoom(code: string, onView: (view: RoomView) => void, onIssue?: (code: string | null) => void): () => void {
   const socket: Socket = io(BASE_URL, { auth: (next) => { void currentToken().then((token) => next({ token })).catch(() => next({ token: null })) }, transports: ["websocket"] })
   socket.on("connect", () => {
-    socket.emit("room:subscribe", { code })
+    socket.emit("room:subscribe", { code }, (reply: { ok: boolean; code?: string }) => {
+      onIssue?.(reply.ok ? null : reply.code ?? "UNKNOWN")
+    })
   })
+  socket.on("disconnect", () => onIssue?.("OFFLINE"))
+  socket.on("connect_error", (error: Error) => onIssue?.(error.message))
   socket.on("room:update", (view: RoomView) => onView(view))
   return () => {
     socket.disconnect()
