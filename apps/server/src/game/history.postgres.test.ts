@@ -82,6 +82,21 @@ describe("game history in Postgres (plan Step 11)", () => {
     expect(saved?.winner).toBe("TEAM_LIBERAL")
     expect(saved?.players).toHaveLength(5)
     expect(saved?.events.map((event) => event.type)).toEqual(["NOMINATED", "GAME_OVER"])
+    if (!saved) throw new Error("Expected saved game")
+
+    const history = createPrismaHistory(db)
+    const firstId = (users[0] as { id: string }).id
+    const secondId = (users[1] as { id: string }).id
+    await history.deleteForUser(firstId)
+    await db.user.delete({ where: { id: firstId } })
+    await history.deleteForUser(secondId)
+    await db.user.delete({ where: { id: secondId } })
+    const afterDeletion = await db.game.findUnique({ where: { id: saved.id }, include: { room: true, players: true, events: true } })
+    expect(afterDeletion?.players).toHaveLength(5)
+    expect(new Set(afterDeletion?.players.map((player) => player.userId)).size).toBe(5)
+    expect(afterDeletion?.room.hostUserId).not.toBe(firstId)
+    expect(JSON.stringify(afterDeletion?.events)).not.toContain(firstId)
+    expect(JSON.stringify(afterDeletion?.events)).not.toContain(secondId)
   }, 120000)
 })
 

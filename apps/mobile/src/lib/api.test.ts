@@ -19,3 +19,19 @@ describe("guest session request", () => {
     }))
   })
 })
+
+describe("bodyless game actions", () => {
+  it("omits JSON Content-Type when starting a room or deleting an account", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await api.startRoom("ABC123")
+    await api.leaveRoom("ABC123")
+    await api.getRoom("ABC123")
+
+    for (const [, options] of fetchMock.mock.calls as [string, RequestInit][]) {
+      expect(options.body).toBeUndefined()
+      expect(options.headers).not.toHaveProperty("content-type")
+    }
+  })
+})

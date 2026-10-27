@@ -76,6 +76,10 @@ the frontend's `EXPO_PUBLIC_*` settings. `REDIS_URL` is optional; with only
 Postgres configured, the server stores live game snapshots there too. The
 manual production smoke check is `node tools/sim/src/liveSmoke.mjs` with a
 local ignored `apps/mobile/.env`; it creates and removes two test accounts.
+To verify restart recovery, run `node tools/sim/src/liveRestart.mjs prepare`,
+restart only the backend service, then run `node tools/sim/src/liveRestart.mjs
+verify`. It checks that the same account and room survived and removes the
+disposable records.
 An Azure deployment requires an active subscription with verified remaining
 credit/free-tier eligibility. Do not enable a paid tier solely for this demo.
 

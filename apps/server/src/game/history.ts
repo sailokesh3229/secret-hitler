@@ -3,6 +3,7 @@
    room lives in memory until rooms are persisted; its password hash is left
    empty here, since history never needs the password. */
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { randomUUID } from "node:crypto"
 import { partyMembership } from "@game/engine"
 import type { PublicGameEvent } from "@game/protocol"
 
@@ -70,8 +71,10 @@ export function createMemoryHistory(): HistoryStore & { all(): GameSummary[] } {
       return Promise.resolve(game ? { id, ...game.summary } : null)
     },
     deleteForUser: (userId) => {
+      const anonymousId = "deleted:" + randomUUID()
       for (const game of games) {
-        game.summary.players = game.summary.players.map((player) => (player.userId === userId ? { ...player, userId: "deleted" } : player))
+        game.summary.players = game.summary.players.map((player) => (player.userId === userId ? { ...player, userId: anonymousId } : player))
+        game.summary.events = game.summary.events.map((event) => replacePlayerId(event, userId, anonymousId) as PublicGameEvent)
       }
       return Promise.resolve()
     },
@@ -168,16 +171,32 @@ export function createPrismaHistory(prisma: PrismaClient): HistoryStore {
     },
 
     async deleteForUser(userId) {
-      await prisma.gamePlayer.updateMany({ where: { userId }, data: { userId: await anonymousId(prisma) } })
+      await prisma.$transaction(async (tx) => {
+        const games = await tx.gamePlayer.findMany({ where: { userId }, select: { gameId: true } })
+        const hosted = await tx.room.count({ where: { hostUserId: userId } })
+        if (games.length === 0 && hosted === 0) return
+        /* A distinct placeholder is needed for each deleted player: one
+           finished game can contain several later-deleted accounts. */
+        const anonymous = await tx.user.create({ data: { username: "deleted-player-" + randomUUID() } })
+        await tx.gamePlayer.updateMany({ where: { userId }, data: { userId: anonymous.id } })
+        await tx.room.updateMany({ where: { hostUserId: userId }, data: { hostUserId: anonymous.id } })
+        const events = await tx.gameEvent.findMany({ where: { gameId: { in: games.map((game) => game.gameId) } } })
+        for (const event of events) {
+          await tx.gameEvent.update({
+            where: { gameId_seq: { gameId: event.gameId, seq: event.seq } },
+            data: { payload: replacePlayerId(event.payload, userId, anonymous.id) as Prisma.InputJsonValue },
+          })
+        }
+      })
     },
   }
 }
 
-/* A placeholder user keeps finished-game rows (and their history for the other
-   players) when a player deletes their account. */
-async function anonymousId(prisma: PrismaClient): Promise<string> {
-  const existing = await prisma.user.findUnique({ where: { username: "deleted-player" } })
-  if (existing) return existing.id
-  const created = await prisma.user.create({ data: { username: "deleted-player" } })
-  return created.id
+function replacePlayerId(value: unknown, oldId: string, newId: string): unknown {
+  if (typeof value === "string") return value === oldId ? newId : value
+  if (Array.isArray(value)) return value.map((item) => replacePlayerId(item, oldId, newId))
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key === oldId ? newId : key, replacePlayerId(item, oldId, newId)]))
+  }
+  return value
 }

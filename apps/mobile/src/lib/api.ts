@@ -67,7 +67,7 @@ export interface RoomView {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { "content-type": "application/json" }
+  const headers: Record<string, string> = body === undefined ? {} : { "content-type": "application/json" }
   const token = await currentToken()
   if (token) headers.authorization = "Bearer " + token
   const response = await fetch(BASE_URL + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })

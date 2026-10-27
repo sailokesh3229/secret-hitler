@@ -33,7 +33,7 @@ async function jsonRequest(url, body, token) {
 async function gameRequest(path, method, token, body) {
   const response = await fetch(api + path, {
     method,
-    headers: { "content-type": "application/json", authorization: "Bearer " + token },
+    headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), authorization: "Bearer " + token },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(90000),
   })
