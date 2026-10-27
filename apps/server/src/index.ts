@@ -31,16 +31,16 @@ export function buildServer(verifier: TokenVerifier = rejectingVerifier) {
   return composeServer(baseDeps(verifier)).app
 }
 
-function chooseAuth(env: NodeJS.ProcessEnv): { verifier: TokenVerifier; issueGuestToken?: () => string } {
+export function chooseAuth(env: NodeJS.ProcessEnv): { verifier: TokenVerifier; issueGuestToken?: () => string } {
   if (env.FIREBASE_PROJECT_ID) return { verifier: createFirebaseVerifier(env) }
-  /* A signed, server-created identity works for the temporary course demo.
-     ALLOW_DEV_LOGIN remains accepted as a legacy configuration flag, but it
-     no longer enables client-chosen dev:<name> tokens on the public server. */
-  if (env.ALLOW_GUEST_LOGIN === "true" || env.ALLOW_DEV_LOGIN === "true") {
-    const secret = env.GUEST_TOKEN_SECRET ? Buffer.from(env.GUEST_TOKEN_SECRET, "utf8") : undefined
-    return createGuestAuth(secret)
-  }
-  return { verifier: rejectingVerifier }
+  /* When no Firebase project is configured, the public demo offers only
+     server-issued, signed guest identities. A value of false explicitly
+     disables the demo route. ALLOW_DEV_LOGIN is ignored: client-chosen
+     dev:<name> tokens must never work on a public server. */
+  if (env.ALLOW_GUEST_LOGIN === "false") return { verifier: rejectingVerifier }
+  const secret = env.GUEST_TOKEN_SECRET ? Buffer.from(env.GUEST_TOKEN_SECRET, "utf8") : undefined
+  const guest = createGuestAuth(secret)
+  return { verifier: guest.verifier, issueGuestToken: guest.issueToken }
 }
 
 const isMain = process.argv[1] && process.argv[1].endsWith("index.ts")

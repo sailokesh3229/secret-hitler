@@ -34,13 +34,14 @@ Email/Password provider in your own Firebase project, then configure the
 from a service account. Keep the service account values private. The server
 verifies every Firebase ID token; the app refreshes it for HTTP and sockets.
 
-For a temporary coursework demo without Firebase, set `ALLOW_GUEST_LOGIN=true`
-on the server and `EXPO_PUBLIC_DEV_LOGIN=true` for the frontend build. Each
+For a temporary coursework demo without Firebase, guest login is enabled by
+default on the server; set `EXPO_PUBLIC_DEV_LOGIN=true` for the frontend build. Each
 guest receives a server-signed token; `dev:<name>` tokens are rejected by the
 public entry point. Guest accounts and game history disappear on server restart
 when no persistent database is configured. Set a 32+ byte
 `GUEST_TOKEN_SECRET` if guest tokens must survive a restart with persistent
-storage. Guest mode is not durable account sign-in.
+storage. Set `ALLOW_GUEST_LOGIN=false` to disable the demo route. Guest mode
+is not durable account sign-in.
 
 ## Platforms and hosting
 
